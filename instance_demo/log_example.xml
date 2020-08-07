@@ -1,0 +1,995 @@
+<?xml version="1.0" ?>
+<root>
+   <Collecting>
+      <Split>
+         <Bot ID="0">
+            <Batch ID="1">
+               <Orders>
+                  <Order>OC2</Order>
+               </Orders>
+            </Batch>
+            <Batch ID="2">
+               <Orders>
+                  <Order>OC5</Order>
+                  <Order>OC10</Order>
+               </Orders>
+            </Batch>
+            <Batch ID="3">
+               <Orders>
+                  <Order>OC1</Order>
+                  <Order>OC7</Order>
+               </Orders>
+            </Batch>
+         </Bot>
+         <Bot ID="1">
+            <Batch ID="1">
+               <Orders>
+                  <Order>OC3</Order>
+                  <Order>OC4</Order>
+                  <Order>OC8</Order>
+               </Orders>
+            </Batch>
+            <Batch ID="2">
+               <Orders>
+                  <Order>OC9</Order>
+               </Orders>
+            </Batch>
+            <Batch ID="3">
+               <Orders>
+                  <Order>OC6</Order>
+               </Orders>
+            </Batch>
+         </Bot>
+      </Split>
+      <Bots>
+         <Bot ID="0" collect="1" refill="-1">
+            <Batches>
+               <Batch BatchNumber="1" Distance="40.900000000000006">
+                  <ItemsData>
+                     <Orders>
+                        <Order ID="OC1"/>
+                        <Order ID="OC2">
+                           <Item ID="C3_0" Pod="1" Type="blue/c"/>
+                           <Item ID="C3_1" Pod="1" Type="blue/c"/>
+                           <Item ID="C4_0" Pod="4" Type="red/c"/>
+                           <Item ID="C5_0" Pod="7" Type="blue/a"/>
+                           <Item ID="C5_1" Pod="7" Type="blue/a"/>
+                           <Item ID="C2_0" Pod="9" Type="green/c"/>
+                           <Item ID="C6_0" Pod="16" Type="red/a"/>
+                        </Order>
+                        <Order ID="OC3"/>
+                        <Order ID="OC4"/>
+                        <Order ID="OC5"/>
+                        <Order ID="OC6"/>
+                        <Order ID="OC7"/>
+                        <Order ID="OC8"/>
+                        <Order ID="OC9"/>
+                        <Order ID="OC10"/>
+                     </Orders>
+                  </ItemsData>
+                  <Edges>
+                     <Edge EndNode="7" StartNode="1"/>
+                     <Edge EndNode="16" StartNode="4"/>
+                     <Edge EndNode="9" StartNode="7"/>
+                     <Edge EndNode="4" StartNode="9"/>
+                     <Edge EndNode="OutD0" StartNode="16"/>
+                     <Edge EndNode="1" StartNode="OutD0"/>
+                  </Edges>
+                  <Waypoints>
+                     <Waypoint ID="w16">
+                        <Paths>
+                           <Waypoint>w17</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w17">
+                        <Paths>
+                           <Waypoint>w18</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w18">
+                        <Paths>
+                           <Waypoint>w28</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w28">
+                        <Paths>
+                           <Waypoint>w38</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w38">
+                        <Paths>
+                           <Waypoint>w48</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w48">
+                        <Paths>
+                           <Waypoint>w47</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w47">
+                        <Paths>
+                           <Waypoint>w46</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w13">
+                        <Paths>
+                           <Waypoint>w14</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w14">
+                        <Paths>
+                           <Waypoint>w15</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w15">
+                        <Paths>
+                           <Waypoint>w16</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w46">
+                        <Paths>
+                           <Waypoint>w45</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w45">
+                        <Paths>
+                           <Waypoint>w44</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w44">
+                        <Paths>
+                           <Waypoint>w43</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w43">
+                        <Paths>
+                           <Waypoint>w42</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w42">
+                        <Paths>
+                           <Waypoint>w41</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w41">
+                        <Paths>
+                           <Waypoint>w31</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w31">
+                        <Paths>
+                           <Waypoint>w21</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w21">
+                        <Paths>
+                           <Waypoint>w20</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w20">
+                        <Paths>
+                           <Waypoint>w10</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w10">
+                        <Paths>
+                           <Waypoint>w11</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w11">
+                        <Paths>
+                           <Waypoint>w12</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w12">
+                        <Paths>
+                           <Waypoint>w13</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                  </Waypoints>
+               </Batch>
+               <Batch BatchNumber="2" Distance="40.9">
+                  <ItemsData>
+                     <Orders>
+                        <Order ID="OC1"/>
+                        <Order ID="OC2"/>
+                        <Order ID="OC3"/>
+                        <Order ID="OC4"/>
+                        <Order ID="OC5">
+                           <Item ID="C14_0" Pod="2" Type="red/b"/>
+                           <Item ID="C13_0" Pod="10" Type="blue/b"/>
+                           <Item ID="C13_1" Pod="10" Type="blue/b"/>
+                           <Item ID="C15_0" Pod="11" Type="green/b"/>
+                        </Order>
+                        <Order ID="OC6"/>
+                        <Order ID="OC7"/>
+                        <Order ID="OC8"/>
+                        <Order ID="OC9"/>
+                        <Order ID="OC10">
+                           <Item ID="C35_0" Pod="1" Type="blue/c"/>
+                           <Item ID="C34_0" Pod="4" Type="red/c"/>
+                           <Item ID="C33_0" Pod="9" Type="green/c"/>
+                           <Item ID="C36_0" Pod="11" Type="green/b"/>
+                           <Item ID="C38_0" Pod="15" Type="green/a"/>
+                           <Item ID="C37_0" Pod="16" Type="red/a"/>
+                        </Order>
+                     </Orders>
+                  </ItemsData>
+                  <Edges>
+                     <Edge EndNode="15" StartNode="OutD0"/>
+                     <Edge EndNode="OutD0" StartNode="1"/>
+                     <Edge EndNode="1" StartNode="2"/>
+                     <Edge EndNode="10" StartNode="4"/>
+                     <Edge EndNode="2" StartNode="9"/>
+                     <Edge EndNode="9" StartNode="10"/>
+                     <Edge EndNode="4" StartNode="11"/>
+                     <Edge EndNode="16" StartNode="15"/>
+                     <Edge EndNode="11" StartNode="16"/>
+                     <Edge EndNode="15" StartNode="OutD0"/>
+                  </Edges>
+                  <Waypoints>
+                     <Waypoint ID="w20">
+                        <Paths>
+                           <Waypoint>w30</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w30">
+                        <Paths>
+                           <Waypoint>w40</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w40">
+                        <Paths>
+                           <Waypoint>w41</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w41">
+                        <Paths>
+                           <Waypoint>w42</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w42">
+                        <Paths>
+                           <Waypoint>w43</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w43">
+                        <Paths>
+                           <Waypoint>w44</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w44">
+                        <Paths>
+                           <Waypoint>w45</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w13">
+                        <Paths>
+                           <Waypoint>w12</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w12">
+                        <Paths>
+                           <Waypoint>w11</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w11">
+                        <Paths>
+                           <Waypoint>w21</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w21">
+                        <Paths>
+                           <Waypoint>w20</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w14">
+                        <Paths>
+                           <Waypoint>w13</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w15">
+                        <Paths>
+                           <Waypoint>w14</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w16">
+                        <Paths>
+                           <Waypoint>w15</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w17">
+                        <Paths>
+                           <Waypoint>w16</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w45">
+                        <Paths>
+                           <Waypoint>w46</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w46">
+                        <Paths>
+                           <Waypoint>w47</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w47">
+                        <Paths>
+                           <Waypoint>w48</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w48">
+                        <Paths>
+                           <Waypoint>w38</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w38">
+                        <Paths>
+                           <Waypoint>w28</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w28">
+                        <Paths>
+                           <Waypoint>w18</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w18">
+                        <Paths>
+                           <Waypoint>w17</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w20">
+                        <Paths>
+                           <Waypoint>w30</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w30">
+                        <Paths>
+                           <Waypoint>w40</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w40">
+                        <Paths>
+                           <Waypoint>w41</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w41">
+                        <Paths>
+                           <Waypoint>w42</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w42">
+                        <Paths>
+                           <Waypoint>w43</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w43">
+                        <Paths>
+                           <Waypoint>w44</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w44">
+                        <Paths>
+                           <Waypoint>w45</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                  </Waypoints>
+               </Batch>
+               <Batch BatchNumber="3" Distance="40.900000000000006">
+                  <ItemsData>
+                     <Orders>
+                        <Order ID="OC1">
+                           <Item ID="C1_0" Pod="9" Type="green/c"/>
+                           <Item ID="C0_0" Pod="10" Type="blue/b"/>
+                        </Order>
+                        <Order ID="OC2"/>
+                        <Order ID="OC3"/>
+                        <Order ID="OC4"/>
+                        <Order ID="OC5"/>
+                        <Order ID="OC6"/>
+                        <Order ID="OC7">
+                           <Item ID="C21_0" Pod="7" Type="blue/a"/>
+                           <Item ID="C21_1" Pod="7" Type="blue/a"/>
+                           <Item ID="C21_2" Pod="7" Type="blue/a"/>
+                           <Item ID="C22_0" Pod="10" Type="blue/b"/>
+                           <Item ID="C23_0" Pod="15" Type="green/a"/>
+                        </Order>
+                        <Order ID="OC8"/>
+                        <Order ID="OC9"/>
+                        <Order ID="OC10"/>
+                     </Orders>
+                  </ItemsData>
+                  <Edges>
+                     <Edge EndNode="9" StartNode="7"/>
+                     <Edge EndNode="10" StartNode="9"/>
+                     <Edge EndNode="15" StartNode="10"/>
+                     <Edge EndNode="OutD0" StartNode="15"/>
+                     <Edge EndNode="7" StartNode="OutD0"/>
+                  </Edges>
+                  <Waypoints>
+                     <Waypoint ID="w13">
+                        <Paths>
+                           <Waypoint>w14</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w14">
+                        <Paths>
+                           <Waypoint>w15</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w15">
+                        <Paths>
+                           <Waypoint>w16</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w16">
+                        <Paths>
+                           <Waypoint>w17</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w17">
+                        <Paths>
+                           <Waypoint>w18</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w18">
+                        <Paths>
+                           <Waypoint>w28</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w28">
+                        <Paths>
+                           <Waypoint>w38</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w38">
+                        <Paths>
+                           <Waypoint>w48</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w48">
+                        <Paths>
+                           <Waypoint>w47</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w47">
+                        <Paths>
+                           <Waypoint>w46</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w46">
+                        <Paths>
+                           <Waypoint>w45</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w45">
+                        <Paths>
+                           <Waypoint>w44</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w44">
+                        <Paths>
+                           <Waypoint>w43</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w43">
+                        <Paths>
+                           <Waypoint>w42</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w42">
+                        <Paths>
+                           <Waypoint>w41</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w41">
+                        <Paths>
+                           <Waypoint>w31</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w31">
+                        <Paths>
+                           <Waypoint>w21</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w21">
+                        <Paths>
+                           <Waypoint>w20</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w20">
+                        <Paths>
+                           <Waypoint>w10</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w10">
+                        <Paths>
+                           <Waypoint>w11</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w11">
+                        <Paths>
+                           <Waypoint>w12</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w12">
+                        <Paths>
+                           <Waypoint>w13</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                  </Waypoints>
+               </Batch>
+            </Batches>
+         </Bot>
+         <Bot ID="1" collect="1" refill="-1">
+            <Batches>
+               <Batch BatchNumber="1" Distance="40.900000000000006">
+                  <ItemsData>
+                     <Orders>
+                        <Order ID="OC1"/>
+                        <Order ID="OC2"/>
+                        <Order ID="OC3">
+                           <Item ID="C8_0" Pod="2" Type="red/b"/>
+                           <Item ID="C7_0" Pod="9" Type="green/c"/>
+                        </Order>
+                        <Order ID="OC4">
+                           <Item ID="C12_0" Pod="1" Type="blue/c"/>
+                           <Item ID="C11_0" Pod="2" Type="red/b"/>
+                           <Item ID="C9_0" Pod="9" Type="green/c"/>
+                           <Item ID="C9_1" Pod="9" Type="green/c"/>
+                           <Item ID="C10_0" Pod="15" Type="green/a"/>
+                        </Order>
+                        <Order ID="OC5"/>
+                        <Order ID="OC6"/>
+                        <Order ID="OC7"/>
+                        <Order ID="OC8">
+                           <Item ID="C25_0" Pod="4" Type="red/c"/>
+                           <Item ID="C26_0" Pod="9" Type="green/c"/>
+                           <Item ID="C24_0" Pod="15" Type="green/a"/>
+                        </Order>
+                        <Order ID="OC9"/>
+                        <Order ID="OC10"/>
+                     </Orders>
+                  </ItemsData>
+                  <Edges>
+                     <Edge EndNode="15" StartNode="OutD1"/>
+                     <Edge EndNode="2" StartNode="1"/>
+                     <Edge EndNode="9" StartNode="2"/>
+                     <Edge EndNode="OutD1" StartNode="4"/>
+                     <Edge EndNode="4" StartNode="9"/>
+                     <Edge EndNode="1" StartNode="15"/>
+                     <Edge EndNode="15" StartNode="OutD1"/>
+                  </Edges>
+                  <Waypoints>
+                     <Waypoint ID="w29">
+                        <Paths>
+                           <Waypoint>w39</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w39">
+                        <Paths>
+                           <Waypoint>w49</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w49">
+                        <Paths>
+                           <Waypoint>w48</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w48">
+                        <Paths>
+                           <Waypoint>w47</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w47">
+                        <Paths>
+                           <Waypoint>w46</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w46">
+                        <Paths>
+                           <Waypoint>w45</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w13">
+                        <Paths>
+                           <Waypoint>w14</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w14">
+                        <Paths>
+                           <Waypoint>w15</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w16">
+                        <Paths>
+                           <Waypoint>w17</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w17">
+                        <Paths>
+                           <Waypoint>w18</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w18">
+                        <Paths>
+                           <Waypoint>w28</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w28">
+                        <Paths>
+                           <Waypoint>w29</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w15">
+                        <Paths>
+                           <Waypoint>w16</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w45">
+                        <Paths>
+                           <Waypoint>w44</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w44">
+                        <Paths>
+                           <Waypoint>w43</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w43">
+                        <Paths>
+                           <Waypoint>w42</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w42">
+                        <Paths>
+                           <Waypoint>w41</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w41">
+                        <Paths>
+                           <Waypoint>w31</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w31">
+                        <Paths>
+                           <Waypoint>w21</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w21">
+                        <Paths>
+                           <Waypoint>w11</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w11">
+                        <Paths>
+                           <Waypoint>w12</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w12">
+                        <Paths>
+                           <Waypoint>w13</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w29">
+                        <Paths>
+                           <Waypoint>w39</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w39">
+                        <Paths>
+                           <Waypoint>w49</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w49">
+                        <Paths>
+                           <Waypoint>w48</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w48">
+                        <Paths>
+                           <Waypoint>w47</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w47">
+                        <Paths>
+                           <Waypoint>w46</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w46">
+                        <Paths>
+                           <Waypoint>w45</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                  </Waypoints>
+               </Batch>
+               <Batch BatchNumber="2" Distance="40.9">
+                  <ItemsData>
+                     <Orders>
+                        <Order ID="OC1"/>
+                        <Order ID="OC2"/>
+                        <Order ID="OC3"/>
+                        <Order ID="OC4"/>
+                        <Order ID="OC5"/>
+                        <Order ID="OC6"/>
+                        <Order ID="OC7"/>
+                        <Order ID="OC8"/>
+                        <Order ID="OC9">
+                           <Item ID="C27_0" Pod="1" Type="blue/c"/>
+                           <Item ID="C31_0" Pod="2" Type="red/b"/>
+                           <Item ID="C28_0" Pod="7" Type="blue/a"/>
+                           <Item ID="C28_1" Pod="7" Type="blue/a"/>
+                           <Item ID="C32_0" Pod="11" Type="green/b"/>
+                           <Item ID="C30_0" Pod="15" Type="green/a"/>
+                           <Item ID="C29_0" Pod="16" Type="red/a"/>
+                           <Item ID="C29_1" Pod="16" Type="red/a"/>
+                        </Order>
+                        <Order ID="OC10"/>
+                     </Orders>
+                  </ItemsData>
+                  <Edges>
+                     <Edge EndNode="7" StartNode="1"/>
+                     <Edge EndNode="11" StartNode="2"/>
+                     <Edge EndNode="2" StartNode="7"/>
+                     <Edge EndNode="OutD1" StartNode="11"/>
+                     <Edge EndNode="1" StartNode="15"/>
+                     <Edge EndNode="15" StartNode="16"/>
+                     <Edge EndNode="16" StartNode="OutD1"/>
+                  </Edges>
+                  <Waypoints>
+                     <Waypoint ID="w14">
+                        <Paths>
+                           <Waypoint>w15</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w15">
+                        <Paths>
+                           <Waypoint>w16</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w16">
+                        <Paths>
+                           <Waypoint>w17</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w13">
+                        <Paths>
+                           <Waypoint>w14</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w17">
+                        <Paths>
+                           <Waypoint>w18</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w18">
+                        <Paths>
+                           <Waypoint>w28</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w28">
+                        <Paths>
+                           <Waypoint>w29</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w45">
+                        <Paths>
+                           <Waypoint>w44</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w44">
+                        <Paths>
+                           <Waypoint>w43</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w43">
+                        <Paths>
+                           <Waypoint>w42</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w42">
+                        <Paths>
+                           <Waypoint>w41</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w41">
+                        <Paths>
+                           <Waypoint>w31</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w31">
+                        <Paths>
+                           <Waypoint>w21</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w21">
+                        <Paths>
+                           <Waypoint>w11</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w11">
+                        <Paths>
+                           <Waypoint>w12</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w12">
+                        <Paths>
+                           <Waypoint>w13</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w46">
+                        <Paths>
+                           <Waypoint>w45</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w29">
+                        <Paths>
+                           <Waypoint>w39</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w39">
+                        <Paths>
+                           <Waypoint>w49</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w49">
+                        <Paths>
+                           <Waypoint>w48</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w48">
+                        <Paths>
+                           <Waypoint>w47</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w47">
+                        <Paths>
+                           <Waypoint>w46</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                  </Waypoints>
+               </Batch>
+               <Batch BatchNumber="3" Distance="39.099999999999994">
+                  <ItemsData>
+                     <Orders>
+                        <Order ID="OC1"/>
+                        <Order ID="OC2"/>
+                        <Order ID="OC3"/>
+                        <Order ID="OC4"/>
+                        <Order ID="OC5"/>
+                        <Order ID="OC6">
+                           <Item ID="C16_0" Pod="2" Type="red/b"/>
+                           <Item ID="C20_0" Pod="4" Type="red/c"/>
+                           <Item ID="C19_0" Pod="9" Type="green/c"/>
+                           <Item ID="C18_0" Pod="11" Type="green/b"/>
+                           <Item ID="C18_1" Pod="11" Type="green/b"/>
+                           <Item ID="C17_0" Pod="16" Type="red/a"/>
+                           <Item ID="C17_1" Pod="16" Type="red/a"/>
+                           <Item ID="C17_2" Pod="16" Type="red/a"/>
+                        </Order>
+                        <Order ID="OC7"/>
+                        <Order ID="OC8"/>
+                        <Order ID="OC9"/>
+                        <Order ID="OC10"/>
+                     </Orders>
+                  </ItemsData>
+                  <Edges>
+                     <Edge EndNode="9" StartNode="2"/>
+                     <Edge EndNode="2" StartNode="4"/>
+                     <Edge EndNode="16" StartNode="9"/>
+                     <Edge EndNode="4" StartNode="11"/>
+                     <Edge EndNode="OutD1" StartNode="16"/>
+                     <Edge EndNode="11" StartNode="OutD1"/>
+                  </Edges>
+                  <Waypoints>
+                     <Waypoint ID="w14">
+                        <Paths>
+                           <Waypoint>w15</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w16">
+                        <Paths>
+                           <Waypoint>w15</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w15">
+                        <Paths>
+                           <Waypoint>w14</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w15">
+                        <Paths>
+                           <Waypoint>w16</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w16">
+                        <Paths>
+                           <Waypoint>w17</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w17">
+                        <Paths>
+                           <Waypoint>w18</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w18">
+                        <Paths>
+                           <Waypoint>w28</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w28">
+                        <Paths>
+                           <Waypoint>w38</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w38">
+                        <Paths>
+                           <Waypoint>w48</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w48">
+                        <Paths>
+                           <Waypoint>w47</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w47">
+                        <Paths>
+                           <Waypoint>w46</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w17">
+                        <Paths>
+                           <Waypoint>w16</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w46">
+                        <Paths>
+                           <Waypoint>w47</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w47">
+                        <Paths>
+                           <Waypoint>w48</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w48">
+                        <Paths>
+                           <Waypoint>w38</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w38">
+                        <Paths>
+                           <Waypoint>w28</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w28">
+                        <Paths>
+                           <Waypoint>w29</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w29">
+                        <Paths>
+                           <Waypoint>w19</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w19">
+                        <Paths>
+                           <Waypoint>w18</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w18">
+                        <Paths>
+                           <Waypoint>w17</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                  </Waypoints>
+               </Batch>
+            </Batches>
+         </Bot>
+      </Bots>
+   </Collecting>
+   <Refill>
+      <Split/>
+      <Bots/>
+   </Refill>
+</root>

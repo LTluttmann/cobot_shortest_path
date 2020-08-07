@@ -1,0 +1,88 @@
+<?xml version="1.0" ?>
+<OrderList>
+   <ItemDescriptions>
+      <ItemDescription Color="blue" ID="0" Letter="a" Type="Letter" Weight="2.06"/>
+      <ItemDescription Color="green" ID="1" Letter="a" Type="Letter" Weight="2.06"/>
+      <ItemDescription Color="red" ID="2" Letter="a" Type="Letter" Weight="2.06"/>
+      <ItemDescription Color="blue" ID="3" Letter="b" Type="Letter" Weight="1.05"/>
+      <ItemDescription Color="green" ID="4" Letter="b" Type="Letter" Weight="1.05"/>
+      <ItemDescription Color="red" ID="5" Letter="b" Type="Letter" Weight="1.05"/>
+      <ItemDescription Color="blue" ID="6" Letter="c" Type="Letter" Weight="0.54"/>
+      <ItemDescription Color="green" ID="7" Letter="c" Type="Letter" Weight="0.54"/>
+      <ItemDescription Color="red" ID="8" Letter="c" Type="Letter" Weight="0.54"/>
+      <ItemDescription Color="blue" ID="9" Letter="d" Type="Letter" Weight="1.07"/>
+      <ItemDescription Color="green" ID="10" Letter="d" Type="Letter" Weight="1.07"/>
+      <ItemDescription Color="red" ID="11" Letter="d" Type="Letter" Weight="1.07"/>
+      <ItemDescription Color="blue" ID="12" Letter="e" Type="Letter" Weight="1.71"/>
+      <ItemDescription Color="green" ID="13" Letter="e" Type="Letter" Weight="1.71"/>
+      <ItemDescription Color="red" ID="14" Letter="e" Type="Letter" Weight="1.71"/>
+      <ItemDescription Color="blue" ID="15" Letter="f" Type="Letter" Weight="1.07"/>
+      <ItemDescription Color="green" ID="16" Letter="f" Type="Letter" Weight="1.07"/>
+      <ItemDescription Color="red" ID="17" Letter="f" Type="Letter" Weight="1.07"/>
+      <ItemDescription Color="blue" ID="18" Letter="g" Type="Letter" Weight="1.66"/>
+      <ItemDescription Color="green" ID="19" Letter="g" Type="Letter" Weight="1.66"/>
+      <ItemDescription Color="red" ID="20" Letter="g" Type="Letter" Weight="1.66"/>
+      <ItemDescription Color="blue" ID="21" Letter="h" Type="Letter" Weight="2.72"/>
+      <ItemDescription Color="green" ID="22" Letter="h" Type="Letter" Weight="2.72"/>
+      <ItemDescription Color="red" ID="23" Letter="h" Type="Letter" Weight="2.72"/>
+   </ItemDescriptions>
+   <ItemBundles/>
+   <Orders>
+      <Order TimeStamp="">
+         <Positions>
+            <Position Count="1" ItemDescriptionID="0"/>
+            <Position Count="1" ItemDescriptionID="4"/>
+         </Positions>
+      </Order>
+      <Order TimeStamp="">
+         <Positions>
+            <Position Count="1" ItemDescriptionID="2"/>
+         </Positions>
+      </Order>
+      <Order TimeStamp="">
+         <Positions>
+            <Position Count="1" ItemDescriptionID="2"/>
+         </Positions>
+      </Order>
+      <Order TimeStamp="">
+         <Positions>
+            <Position Count="1" ItemDescriptionID="1"/>
+            <Position Count="1" ItemDescriptionID="2"/>
+            <Position Count="1" ItemDescriptionID="5"/>
+            <Position Count="1" ItemDescriptionID="3"/>
+         </Positions>
+      </Order>
+      <Order TimeStamp="">
+         <Positions>
+            <Position Count="1" ItemDescriptionID="7"/>
+         </Positions>
+      </Order>
+      <Order TimeStamp="">
+         <Positions>
+            <Position Count="1" ItemDescriptionID="7"/>
+         </Positions>
+      </Order>
+      <Order TimeStamp="">
+         <Positions>
+            <Position Count="1" ItemDescriptionID="0"/>
+            <Position Count="1" ItemDescriptionID="6"/>
+         </Positions>
+      </Order>
+      <Order TimeStamp="">
+         <Positions>
+            <Position Count="1" ItemDescriptionID="5"/>
+         </Positions>
+      </Order>
+      <Order TimeStamp="">
+         <Positions>
+            <Position Count="1" ItemDescriptionID="4"/>
+         </Positions>
+      </Order>
+      <Order TimeStamp="">
+         <Positions>
+            <Position Count="1" ItemDescriptionID="4"/>
+            <Position Count="1" ItemDescriptionID="3"/>
+         </Positions>
+      </Order>
+   </Orders>
+</OrderList>

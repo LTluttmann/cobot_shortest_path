@@ -1,0 +1,969 @@
+<?xml version="1.0" ?>
+<root>
+   <Collecting>
+      <Bots>
+         <Bot ID="0" collect="1" refill="-1">
+            <Batches>
+               <Batch BatchNumber="1">
+                  <ItemsData/>
+                  <Edges/>
+                  <Waypoints/>
+               </Batch>
+               <Batch BatchNumber="2">
+                  <ItemsData/>
+                  <Edges/>
+                  <Waypoints/>
+               </Batch>
+               <Batch BatchNumber="3">
+                  <ItemsData/>
+                  <Edges/>
+                  <Waypoints/>
+               </Batch>
+               <Batch BatchNumber="4">
+                  <ItemsData/>
+                  <Edges/>
+                  <Waypoints/>
+               </Batch>
+               <Batch BatchNumber="5">
+                  <ItemsData/>
+                  <Edges/>
+                  <Waypoints/>
+               </Batch>
+            </Batches>
+         </Bot>
+         <Bot ID="1" collect="1" refill="-1">
+            <Batches>
+               <Batch BatchNumber="1">
+                  <ItemsData/>
+                  <Edges/>
+                  <Waypoints/>
+               </Batch>
+               <Batch BatchNumber="2">
+                  <ItemsData>
+                     <Item ID="C0_0" Order="OC1" Pod="34" Type="red/i"/>
+                  </ItemsData>
+                  <Edges>
+                     <Edge EndNode="34" StartNode="OutD0"/>
+                     <Edge EndNode="OutD0" StartNode="34"/>
+                  </Edges>
+                  <Waypoints>
+                     <Waypoint ID="OutD0">
+                        <Paths>
+                           <Waypoint>w5</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w5">
+                        <Paths>
+                           <Waypoint>w2</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w2">
+                        <Paths>
+                           <Waypoint>w1</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w1">
+                        <Paths>
+                           <Waypoint>w0</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w0">
+                        <Paths>
+                           <Waypoint>w627</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w627">
+                        <Paths>
+                           <Waypoint>w626</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w626">
+                        <Paths>
+                           <Waypoint>w94</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w94">
+                        <Paths>
+                           <Waypoint>w95</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w95">
+                        <Paths>
+                           <Waypoint>w96</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w96">
+                        <Paths>
+                           <Waypoint>w307</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w307">
+                        <Paths>
+                           <Waypoint>w306</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w306">
+                        <Paths>
+                           <Waypoint>w305</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w305">
+                        <Paths>
+                           <Waypoint>w304</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w304">
+                        <Paths>
+                           <Waypoint>w303</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w303">
+                        <Paths>
+                           <Waypoint>w302</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w302">
+                        <Paths>
+                           <Waypoint>w301</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w301">
+                        <Paths>
+                           <Waypoint>w300</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w300">
+                        <Paths>
+                           <Waypoint>w299</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w299">
+                        <Paths>
+                           <Waypoint>w298</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w298">
+                        <Paths>
+                           <Waypoint>w297</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w297">
+                        <Paths>
+                           <Waypoint>w296</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w296">
+                        <Paths>
+                           <Waypoint>w295</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w295">
+                        <Paths>
+                           <Waypoint>w294</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w294">
+                        <Paths>
+                           <Waypoint>w293</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w293">
+                        <Paths>
+                           <Waypoint>w292</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w292">
+                        <Paths>
+                           <Waypoint>w291</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w291">
+                        <Paths>
+                           <Waypoint>w290</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w290">
+                        <Paths>
+                           <Waypoint>w289</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w289">
+                        <Paths>
+                           <Waypoint>w288</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w288">
+                        <Paths>
+                           <Waypoint>w316</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w316">
+                        <Paths>
+                           <Waypoint>w344</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w344">
+                        <Paths>
+                           <Waypoint>w372</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w372">
+                        <Paths>
+                           <Waypoint>w400</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w400">
+                        <Paths>
+                           <Waypoint>w399</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w399">
+                        <Paths>
+                           <Waypoint>w398</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w398">
+                        <Paths>
+                           <Waypoint>w397</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w397">
+                        <Paths>
+                           <Waypoint>w425</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w425">
+                        <Paths>
+                           <Waypoint>34</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="34">
+                        <Paths>
+                           <Waypoint>w425</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w425">
+                        <Paths>
+                           <Waypoint>w397</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w397">
+                        <Paths>
+                           <Waypoint>w398</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w398">
+                        <Paths>
+                           <Waypoint>w399</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w399">
+                        <Paths>
+                           <Waypoint>w400</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w400">
+                        <Paths>
+                           <Waypoint>w372</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w372">
+                        <Paths>
+                           <Waypoint>w344</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w344">
+                        <Paths>
+                           <Waypoint>w316</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w316">
+                        <Paths>
+                           <Waypoint>w288</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w288">
+                        <Paths>
+                           <Waypoint>w260</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w260">
+                        <Paths>
+                           <Waypoint>w232</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w232">
+                        <Paths>
+                           <Waypoint>w204</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w204">
+                        <Paths>
+                           <Waypoint>w176</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w176">
+                        <Paths>
+                           <Waypoint>w177</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w177">
+                        <Paths>
+                           <Waypoint>w178</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w178">
+                        <Paths>
+                           <Waypoint>w179</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w179">
+                        <Paths>
+                           <Waypoint>w180</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w180">
+                        <Paths>
+                           <Waypoint>w181</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w181">
+                        <Paths>
+                           <Waypoint>w182</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w182">
+                        <Paths>
+                           <Waypoint>w183</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w183">
+                        <Paths>
+                           <Waypoint>w184</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w184">
+                        <Paths>
+                           <Waypoint>w185</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w185">
+                        <Paths>
+                           <Waypoint>w186</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w186">
+                        <Paths>
+                           <Waypoint>w187</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w187">
+                        <Paths>
+                           <Waypoint>w188</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w188">
+                        <Paths>
+                           <Waypoint>w189</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w189">
+                        <Paths>
+                           <Waypoint>w190</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w190">
+                        <Paths>
+                           <Waypoint>w191</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w191">
+                        <Paths>
+                           <Waypoint>w192</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w192">
+                        <Paths>
+                           <Waypoint>w193</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w193">
+                        <Paths>
+                           <Waypoint>w194</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w194">
+                        <Paths>
+                           <Waypoint>w195</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w195">
+                        <Paths>
+                           <Waypoint>w92</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w92">
+                        <Paths>
+                           <Waypoint>w622</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w622">
+                        <Paths>
+                           <Waypoint>w623</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w623">
+                        <Paths>
+                           <Waypoint>w4</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w4">
+                        <Paths>
+                           <Waypoint>w5</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w5">
+                        <Paths>
+                           <Waypoint>OutD0</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                  </Waypoints>
+               </Batch>
+               <Batch BatchNumber="3">
+                  <ItemsData/>
+                  <Edges/>
+                  <Waypoints/>
+               </Batch>
+               <Batch BatchNumber="4">
+                  <ItemsData/>
+                  <Edges/>
+                  <Waypoints/>
+               </Batch>
+               <Batch BatchNumber="5">
+                  <ItemsData>
+                     <Item ID="C3_0" Order="OC4" Pod="12" Type="blue/m"/>
+                     <Item ID="C4_0" Order="OC5" Pod="12" Type="red/a"/>
+                     <Item ID="C5_0" Order="OC6" Pod="12" Type="red/r"/>
+                     <Item ID="C5_1" Order="OC6" Pod="12" Type="red/r"/>
+                     <Item ID="C6_0" Order="OC7" Pod="12" Type="green/i"/>
+                     <Item ID="C7_0" Order="OC8" Pod="12" Type="blue/a"/>
+                     <Item ID="C9_0" Order="OC10" Pod="12" Type="red/u"/>
+                     <Item ID="C2_0" Order="OC3" Pod="84" Type="green/r"/>
+                     <Item ID="C2_1" Order="OC3" Pod="84" Type="green/r"/>
+                     <Item ID="C1_0" Order="OC2" Pod="221" Type="green/m"/>
+                     <Item ID="C8_0" Order="OC9" Pod="221" Type="red/s"/>
+                  </ItemsData>
+                  <Edges>
+                     <Edge EndNode="OutD0" StartNode="12"/>
+                     <Edge EndNode="221" StartNode="84"/>
+                     <Edge EndNode="12" StartNode="221"/>
+                     <Edge EndNode="84" StartNode="OutD0_Copy"/>
+                  </Edges>
+                  <Waypoints>
+                     <Waypoint ID="12">
+                        <Paths>
+                           <Waypoint>w427</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w427">
+                        <Paths>
+                           <Waypoint>w399</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w399">
+                        <Paths>
+                           <Waypoint>w400</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w400">
+                        <Paths>
+                           <Waypoint>w372</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w372">
+                        <Paths>
+                           <Waypoint>w344</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w344">
+                        <Paths>
+                           <Waypoint>w316</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w316">
+                        <Paths>
+                           <Waypoint>w288</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w288">
+                        <Paths>
+                           <Waypoint>w260</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w260">
+                        <Paths>
+                           <Waypoint>w232</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w232">
+                        <Paths>
+                           <Waypoint>w204</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w204">
+                        <Paths>
+                           <Waypoint>w176</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w176">
+                        <Paths>
+                           <Waypoint>w177</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w177">
+                        <Paths>
+                           <Waypoint>w178</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w178">
+                        <Paths>
+                           <Waypoint>w179</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w179">
+                        <Paths>
+                           <Waypoint>w180</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w180">
+                        <Paths>
+                           <Waypoint>w181</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w181">
+                        <Paths>
+                           <Waypoint>w182</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w182">
+                        <Paths>
+                           <Waypoint>w183</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w183">
+                        <Paths>
+                           <Waypoint>w184</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w184">
+                        <Paths>
+                           <Waypoint>w185</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w185">
+                        <Paths>
+                           <Waypoint>w186</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w186">
+                        <Paths>
+                           <Waypoint>w187</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w187">
+                        <Paths>
+                           <Waypoint>w188</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w188">
+                        <Paths>
+                           <Waypoint>w189</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w189">
+                        <Paths>
+                           <Waypoint>w190</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w190">
+                        <Paths>
+                           <Waypoint>w191</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w191">
+                        <Paths>
+                           <Waypoint>w192</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w192">
+                        <Paths>
+                           <Waypoint>w193</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w193">
+                        <Paths>
+                           <Waypoint>w194</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w194">
+                        <Paths>
+                           <Waypoint>w195</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w195">
+                        <Paths>
+                           <Waypoint>w92</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w92">
+                        <Paths>
+                           <Waypoint>w622</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w622">
+                        <Paths>
+                           <Waypoint>w623</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w623">
+                        <Paths>
+                           <Waypoint>w4</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w4">
+                        <Paths>
+                           <Waypoint>w5</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w5">
+                        <Paths>
+                           <Waypoint>OutD0</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="84">
+                        <Paths>
+                           <Waypoint>w426</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w426">
+                        <Paths>
+                           <Waypoint>w425</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w425">
+                        <Paths>
+                           <Waypoint>w424</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w424">
+                        <Paths>
+                           <Waypoint>221</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="221">
+                        <Paths>
+                           <Waypoint>w424</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w424">
+                        <Paths>
+                           <Waypoint>w425</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w425">
+                        <Paths>
+                           <Waypoint>w426</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w426">
+                        <Paths>
+                           <Waypoint>w427</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w427">
+                        <Paths>
+                           <Waypoint>12</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="OutD0_Copy">
+                        <Paths>
+                           <Waypoint>w5</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w5">
+                        <Paths>
+                           <Waypoint>w2</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w2">
+                        <Paths>
+                           <Waypoint>w1</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w1">
+                        <Paths>
+                           <Waypoint>w0</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w0">
+                        <Paths>
+                           <Waypoint>w627</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w627">
+                        <Paths>
+                           <Waypoint>w626</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w626">
+                        <Paths>
+                           <Waypoint>w94</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w94">
+                        <Paths>
+                           <Waypoint>w95</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w95">
+                        <Paths>
+                           <Waypoint>w96</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w96">
+                        <Paths>
+                           <Waypoint>w307</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w307">
+                        <Paths>
+                           <Waypoint>w306</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w306">
+                        <Paths>
+                           <Waypoint>w305</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w305">
+                        <Paths>
+                           <Waypoint>w304</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w304">
+                        <Paths>
+                           <Waypoint>w303</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w303">
+                        <Paths>
+                           <Waypoint>w302</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w302">
+                        <Paths>
+                           <Waypoint>w301</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w301">
+                        <Paths>
+                           <Waypoint>w300</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w300">
+                        <Paths>
+                           <Waypoint>w299</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w299">
+                        <Paths>
+                           <Waypoint>w298</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w298">
+                        <Paths>
+                           <Waypoint>w297</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w297">
+                        <Paths>
+                           <Waypoint>w296</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w296">
+                        <Paths>
+                           <Waypoint>w295</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w295">
+                        <Paths>
+                           <Waypoint>w294</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w294">
+                        <Paths>
+                           <Waypoint>w293</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w293">
+                        <Paths>
+                           <Waypoint>w292</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w292">
+                        <Paths>
+                           <Waypoint>w291</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w291">
+                        <Paths>
+                           <Waypoint>w290</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w290">
+                        <Paths>
+                           <Waypoint>w289</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w289">
+                        <Paths>
+                           <Waypoint>w288</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w288">
+                        <Paths>
+                           <Waypoint>w316</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w316">
+                        <Paths>
+                           <Waypoint>w344</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w344">
+                        <Paths>
+                           <Waypoint>w372</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w372">
+                        <Paths>
+                           <Waypoint>w400</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w400">
+                        <Paths>
+                           <Waypoint>w399</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w399">
+                        <Paths>
+                           <Waypoint>w398</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w398">
+                        <Paths>
+                           <Waypoint>w426</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                     <Waypoint ID="w426">
+                        <Paths>
+                           <Waypoint>84</Waypoint>
+                        </Paths>
+                     </Waypoint>
+                  </Waypoints>
+               </Batch>
+            </Batches>
+         </Bot>
+         <Bot ID="50" collect="1" refill="-1">
+            <Batches>
+               <Batch BatchNumber="1">
+                  <ItemsData/>
+                  <Edges/>
+                  <Waypoints/>
+               </Batch>
+               <Batch BatchNumber="2">
+                  <ItemsData/>
+                  <Edges/>
+                  <Waypoints/>
+               </Batch>
+               <Batch BatchNumber="3">
+                  <ItemsData/>
+                  <Edges/>
+                  <Waypoints/>
+               </Batch>
+               <Batch BatchNumber="4">
+                  <ItemsData/>
+                  <Edges/>
+                  <Waypoints/>
+               </Batch>
+               <Batch BatchNumber="5">
+                  <ItemsData/>
+                  <Edges/>
+                  <Waypoints/>
+               </Batch>
+            </Batches>
+         </Bot>
+         <Bot ID="51" collect="1" refill="-1">
+            <Batches>
+               <Batch BatchNumber="1">
+                  <ItemsData/>
+                  <Edges/>
+                  <Waypoints/>
+               </Batch>
+               <Batch BatchNumber="2">
+                  <ItemsData/>
+                  <Edges/>
+                  <Waypoints/>
+               </Batch>
+               <Batch BatchNumber="3">
+                  <ItemsData/>
+                  <Edges/>
+                  <Waypoints/>
+               </Batch>
+               <Batch BatchNumber="4">
+                  <ItemsData/>
+                  <Edges/>
+                  <Waypoints/>
+               </Batch>
+               <Batch BatchNumber="5">
+                  <ItemsData/>
+                  <Edges/>
+                  <Waypoints/>
+               </Batch>
+            </Batches>
+         </Bot>
+         <Bot ID="52" collect="1" refill="-1">
+            <Batches>
+               <Batch BatchNumber="1">
+                  <ItemsData/>
+                  <Edges/>
+                  <Waypoints/>
+               </Batch>
+               <Batch BatchNumber="2">
+                  <ItemsData/>
+                  <Edges/>
+                  <Waypoints/>
+               </Batch>
+               <Batch BatchNumber="3">
+                  <ItemsData/>
+                  <Edges/>
+                  <Waypoints/>
+               </Batch>
+               <Batch BatchNumber="4">
+                  <ItemsData/>
+                  <Edges/>
+                  <Waypoints/>
+               </Batch>
+               <Batch BatchNumber="5">
+                  <ItemsData/>
+                  <Edges/>
+                  <Waypoints/>
+               </Batch>
+            </Batches>
+         </Bot>
+      </Bots>
+   </Collecting>
+   <Refill>
+      <Bots/>
+   </Refill>
+</root>
