@@ -121,6 +121,18 @@ class WarehouseDateProcessing():
         return d_ij
 
 
+# container class for a batch
+class Batch:
+    def __init__(self, ID, pack_station, cobot=None):
+        self.ID = ID
+        self.orders = []
+        self.items = []
+        self.route = []
+        self.weight = 0
+        self.cobot = cobot
+        self.pack_station = pack_station
+
+
 class Demo():
     def __init__(self, splitOrders=False):
 
@@ -199,18 +211,18 @@ class Demo():
         shelf2 = self.item_id_pod_id_dict[item2]
         return self.distance_ij[shelf1, shelf2]
 
-    def get_fitness_of_tour(self, tour, pack_station):
-        complete_tour = [pack_station] + tour + [pack_station]
+    def get_fitness_of_batch(self, batch: Batch):
         distances = []
-        for first, second in zip(complete_tour, complete_tour[1:]):
-            distances.append(self.distance_ij[first, second])
+        distances.append(self.distance_ij[batch.pack_station, self.item_id_pod_id_dict[batch.route[0]]])
+        for first, second in zip(batch.route, batch.route[1:]):
+            distances.append(self.distance_ij[self.item_id_pod_id_dict[first], self.item_id_pod_id_dict[second]])
+        distances.append(self.distance_ij[batch.pack_station, self.item_id_pod_id_dict[batch.route[-1]]])
         return np.sum(distances)
 
-    def get_fitness_of_solution(self, solution):
+    def get_fitness_of_solution(self):
         distances = []
-        for pack_station, value in solution.items():
-            for batch, tour in value.items():
-                distances.append(self.get_fitness_of_tour(tour, pack_station))
+        for batch in self.batches.values():
+            distances.append(self.get_fitness_of_batch(batch))
         return np.sum(distances)
 
 
@@ -218,7 +230,7 @@ class GreedyHeuristic(Demo):
     def __init__(self):
         self.solution = None
         self.orders_of_batches = dict()
-        self.batches = defaultdict(list)
+        self.batches = dict()
         super(GreedyHeuristic, self).__init__()
         self.fill_item_id_pod_id_dict()
         self.warehouseInstance.Orders = {str(key): value for key, value in enumerate(self.warehouseInstance.Orders)}
@@ -237,7 +249,7 @@ class GreedyHeuristic(Demo):
         for pack_station in list(self.warehouseInstance.OutputStations.keys()):
             item_dists = []
             for item in items:
-                item_dists.append(self.distance_ij[pack_station, item])
+                item_dists.append(self.distance_ij[pack_station, self.item_id_pod_id_dict[item]])
             order_pack_dists[pack_station] = np.sum(item_dists)
         if retrieve_station_only:
             return min(order_pack_dists.keys(), key=(lambda k: order_pack_dists[k]))
@@ -287,7 +299,7 @@ class GreedyHeuristic(Demo):
                 for order in other_orders_of_station:
                     dists_to_item = []
                     for item2 in self.get_items_by_order(order):
-                        dists_to_item.append(self.distance_ij[item, item2])
+                        dists_to_item.append(self.distance_ij[self.item_id_pod_id_dict[item], self.item_id_pod_id_dict[item2]])
                     min_dist_to_item_for_order[order] = min(dists_to_item)
                 min_dist_to_item[item] = min(min_dist_to_item_for_order.keys(),
                                              key=(lambda k: min_dist_to_item_for_order[k]))
@@ -301,85 +313,79 @@ class GreedyHeuristic(Demo):
             items.extend(self.get_items_by_order(order))
         return items
 
-    def greedy_next_order_to_batch(self, batch, forbidden=None):
+    def greedy_next_order_to_batch(self, batch: Batch, already_assigned, orders_of_station, forbidden=None):
         if forbidden is None:
             forbidden = []  # to exclude orders that don´t fit in the batch anymore due to limited capacity
-        batch = [batch] if not isinstance(batch, list) else batch
-        station_assignments = self.assign_orders_to_stations()
-        station_of_order = [k for k, v in station_assignments.items() if any([idx in v for idx in batch])][0]
-        other_orders_of_station = list(
-            set(station_assignments[station_of_order]).difference(set(batch + forbidden)))
-        print("other unassigned orders in the same station ({}) as this order: ".format(station_of_order),
-              other_orders_of_station)
+        other_orders_of_station = list(set(orders_of_station).difference(set(already_assigned + forbidden))) # todo Order auch als eigene Klasse (child von Order mit neuen attributen)
+        other_orders_of_station = np.setdiff1d(orders_of_station, already_assigned+forbidden)
+        print("other unassigned orders in the same station ({}) as this batch: ".format(batch.pack_station), other_orders_of_station)
         sum_min_dist_to_item = dict()
         for order in other_orders_of_station:
             min_distances = []
-            for item_in_batch in self.get_all_items_of_batch(batch):
-                min_distances.append(min([self.distance_ij[item_in_batch, item]
+            for item_in_batch in batch.items:
+                min_distances.append(min([self.distance_ij[self.item_id_pod_id_dict[item_in_batch],
+                                                           self.item_id_pod_id_dict[item]]
                                           for item in self.get_items_by_order(order)]))
-            sum_min_dist_to_item[order] = np.mean(min_distances)  # average instead? otherwise we always pick small orders
+            sum_min_dist_to_item[order] = np.sum(min_distances)  # average instead? otherwise we always pick small orders
         return min(sum_min_dist_to_item.keys(), key=(lambda k: sum_min_dist_to_item[k]))
 
-    def assign_orders_to_batches(self, pack_station_idx):
+    def assign_orders_to_batches_greedy(self, pack_station_idx):
         orders_of_station = self.assign_orders_to_stations()[pack_station_idx]
         already_assigned = list()
-        items_of_batch = defaultdict(list)
         batch_count = 0
         while len(already_assigned) != len(orders_of_station):
             batch_id = pack_station_idx + "_" + str(batch_count)
-            np.random.seed(14213)
-            init_order = np.random.choice(list(set(orders_of_station).difference(already_assigned)))
-            self.batches[batch_id].append(init_order)
+            batch = Batch(batch_id, pack_station_idx)
+            print("initialized new batch with ID: ", batch.ID)
+            # initialize the batch with a random order
+            init_order = np.random.choice(np.setdiff1d(orders_of_station, already_assigned))
+            batch.orders.append(init_order)
+            batch.items.extend(self.get_items_by_order(init_order))
             already_assigned.append(init_order)
-            curr_weight = self.get_total_weight_by_order(init_order)
+            batch.weight += self.get_total_weight_by_order(init_order)
             forbidden_for_batch = []
-            while curr_weight < self.batch_weight and not len(
-                    set(already_assigned).union(forbidden_for_batch)) == len(orders_of_station):
-                new_order = self.greedy_next_order_to_batch(already_assigned, forbidden_for_batch)
-                # new_order = self.count_min_distances_for_order(already_assigned, forbidden_for_batch)
+            while batch.weight < self.batch_weight and not len(
+                    np.union1d(already_assigned, forbidden_for_batch)) == len(orders_of_station):
+                new_order = self.greedy_next_order_to_batch(batch, already_assigned, orders_of_station, forbidden_for_batch)
+                weight_of_order = self.get_total_weight_by_order(new_order)
                 print("Chosen order: ", new_order)
-                if (curr_weight + self.get_total_weight_by_order(new_order)) <= self.batch_weight:
+                if (batch.weight + weight_of_order) <= self.batch_weight:
                     print("and it also fits in the current batch ({})".format(batch_id))
                     already_assigned.append(new_order)
-                    self.batches[batch_id].append(new_order)
-                    curr_weight += self.get_total_weight_by_order(new_order)
+                    batch.orders.append(new_order)
+                    batch.items.extend(self.get_items_by_order(new_order))
+                    batch.weight += weight_of_order
                 else:
                     print("but it would add too much weight to the batch, go on to next...")
                     forbidden_for_batch.append(new_order)
-                    continue
-            for order in self.batches[batch_id]:
-                items_of_batch[batch_id].extend(self.get_items_by_order(order))
+                print("the current batch ({}) looks as follows: {}".format(batch.ID, batch.orders))
+            self.batches[batch_id] = batch
             batch_count += 1
-        self.orders_of_batches[pack_station_idx] = self.batches
-        print("The assignment of orders to batches looks as follows: ", self.batches)
-        return items_of_batch
+
+    def greedy_cobot_tour(self):
+        for batch_id, batch in self.batches.items():
+            items = np.unique(batch.items)
+            distances_to_station = {item: self.distance_ij[batch.pack_station, self.item_id_pod_id_dict[item]]
+                                    for item in items}
+            min_item = min(distances_to_station.keys(), key=(lambda k: distances_to_station[k]))
+            batch.route.append(min_item)  # TODO in items tauchen doppelte einträge auf. Wie geht man damit um?
+            while len(batch.route) != len(items):
+                distances_to_current_item = {
+                    item: self.distance_ij[self.item_id_pod_id_dict[batch.route[-1]], self.item_id_pod_id_dict[item]]
+                    for item in np.setdiff1d(items, batch.route)
+                }
+                min_item = min(distances_to_current_item.keys(), key=(lambda k: distances_to_current_item[k]))
+                batch.route.append(min_item)
 
     def apply_greedy_heuristic(self):
-        tours_of_pack_station = dict()
-        for pack_station in list(self.warehouseInstance.OutputStations.keys()):
-            tour_of_batch = dict()
-            for batch, items in self.assign_orders_to_batches(pack_station).items():
-                items = list(set(items[:]))
-                tour = []
-                distances_to_pack = {item: self.distance_ij[pack_station, self.item_id_pod_id_dict[item]] for item in items}
-                min_item = min(distances_to_pack.keys(), key=(lambda k: distances_to_pack[k]))
-                tour.append(min_item)  # TODO in items tauchen doppelte einträge auf. Wie geht man damit um?
-                while len(tour) != len(items):
-                    distances_to_current_item = {
-                        item: self.distance_ij[tour[-1], self.item_id_pod_id_dict[item]]
-                        for item in list(set(items).difference(tour))
-                    }
-                    min_item = min(distances_to_current_item.keys(), key=(lambda k: distances_to_current_item[k]))
-                    tour.append(min_item)
-                tour_of_batch[batch] = tour
-            tours_of_pack_station[pack_station] = tour_of_batch
-        return tours_of_pack_station
+        for pack_station in self.warehouseInstance.OutputStations.keys():
+            self.assign_orders_to_batches_greedy(pack_station)
+        self.greedy_cobot_tour()
 
     def get_weight_per_batch(self):
         weight_dict = defaultdict(int)
-        for batch_id, order_list in self.batches.items():
-            for order in order_list:
-                weight_dict[batch_id] += self.get_total_weight_by_order(order)
+        for batch_id, batch in self.batches.items():
+            weight_dict[batch_id] = batch.weight
         return weight_dict
 
     def merge_batches_of_stations(self):
@@ -405,6 +411,9 @@ class GreedyHeuristic(Demo):
             self.batches[row.index_x].extend(self.batches.pop(row.index_y))
         return True
 
+    def update_batch(self):
+        pass
+
     def update_solution(self):
         """
         function to update the solution after changing the assignment of orders to batches
@@ -415,11 +424,14 @@ class GreedyHeuristic(Demo):
         pass
 
 if __name__ == "__main__":
+    np.random.seed(123)
     greedy = GreedyHeuristic()
     starttime = time.time()
-    solution = greedy.apply_greedy_heuristic()
-    print("runtime: ", time.time() - starttime)
-    print("fitness: ", greedy.get_fitness_of_solution(solution))
-    print(solution)
-    print(greedy.orders_of_batches)
-    print(greedy.get_weight_per_batch())
+    # solution = greedy.apply_greedy_heuristic()
+    greedy.apply_greedy_heuristic()
+    # print("runtime: ", time.time() - starttime)
+    # print("fitness: ", greedy.get_fitness_of_solution(solution))
+    # print(solution)
+    # print(greedy.orders_of_batches)
+    # print(greedy.get_weight_per_batch())
+    print(greedy.get_fitness_of_solution())
