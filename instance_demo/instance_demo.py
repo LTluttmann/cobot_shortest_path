@@ -216,6 +216,9 @@ class Demo():
 
 class GreedyHeuristic(Demo):
     def __init__(self):
+        self.solution = None
+        self.orders_of_batches = dict()
+        self.batches = defaultdict(list)
         super(GreedyHeuristic, self).__init__()
         self.fill_item_id_pod_id_dict()
         self.warehouseInstance.Orders = {str(key): value for key, value in enumerate(self.warehouseInstance.Orders)}
@@ -320,13 +323,13 @@ class GreedyHeuristic(Demo):
     def assign_orders_to_batches(self, pack_station_idx):
         orders_of_station = self.assign_orders_to_stations()[pack_station_idx]
         already_assigned = list()
-        orders_of_batch = defaultdict(list)
         items_of_batch = defaultdict(list)
         batch_count = 0
         while len(already_assigned) != len(orders_of_station):
+            batch_id = pack_station_idx + "_" + str(batch_count)
             np.random.seed(14213)
             init_order = np.random.choice(list(set(orders_of_station).difference(already_assigned)))
-            orders_of_batch[batch_count].append(init_order)
+            self.batches[batch_id].append(init_order)
             already_assigned.append(init_order)
             curr_weight = self.get_total_weight_by_order(init_order)
             forbidden_for_batch = []
@@ -336,18 +339,19 @@ class GreedyHeuristic(Demo):
                 # new_order = self.count_min_distances_for_order(already_assigned, forbidden_for_batch)
                 print("Chosen order: ", new_order)
                 if (curr_weight + self.get_total_weight_by_order(new_order)) <= self.batch_weight:
-                    print("and it also fits in the current batch ({})".format(batch_count))
+                    print("and it also fits in the current batch ({})".format(batch_id))
                     already_assigned.append(new_order)
-                    orders_of_batch[batch_count].append(new_order)
+                    self.batches[batch_id].append(new_order)
                     curr_weight += self.get_total_weight_by_order(new_order)
                 else:
                     print("but it would add too much weight to the batch, go on to next...")
                     forbidden_for_batch.append(new_order)
                     continue
-            for order in orders_of_batch[batch_count]:
-                items_of_batch[batch_count].extend(self.get_items_by_order(order))
+            for order in self.batches[batch_id]:
+                items_of_batch[batch_id].extend(self.get_items_by_order(order))
             batch_count += 1
-        print("The assignment of orders to batches looks as follows: ", orders_of_batch)
+        self.orders_of_batches[pack_station_idx] = self.batches
+        print("The assignment of orders to batches looks as follows: ", self.batches)
         return items_of_batch
 
     def apply_greedy_heuristic(self):
@@ -371,6 +375,44 @@ class GreedyHeuristic(Demo):
             tours_of_pack_station[pack_station] = tour_of_batch
         return tours_of_pack_station
 
+    def get_weight_per_batch(self):
+        weight_dict = defaultdict(int)
+        for batch_id, order_list in self.batches.items():
+            for order in order_list:
+                weight_dict[batch_id] += self.get_total_weight_by_order(order)
+        return weight_dict
+
+    def merge_batches_of_stations(self):
+        weight_dict = self.get_weight_per_batch()
+        # cartesian product of all batches and their corresponding weights
+        weight_of_merged_batches = np.zeros(shape=(len(weight_dict.keys()), len(weight_dict.keys())))
+        for i, weight_i in enumerate(weight_dict.values()):
+            for j, weight_j in enumerate(weight_dict.values()):
+                weight_of_merged_batches[i, j] = weight_i + weight_j
+        # exclude similar elements, i.e. (i,j) = (j,i) --> drop (i,j) by using upper triangular of matrix
+        merged_batches_df = pd.DataFrame(np.triu(weight_of_merged_batches, k=1),
+                                         columns=weight_dict.keys(), index=weight_dict.keys()).reset_index().melt(id_vars="index")
+        merged_batches_df.columns = ["index_x", "index_y", "total_weight"]
+        merged_batches_df = merged_batches_df[(merged_batches_df.total_weight > 0) &
+                                              (merged_batches_df.total_weight < self.batch_weight)]
+        if merged_batches_df.empty():
+            return False
+        # get the merge that results in the highest workload of the cobot (in terms of capacity)
+        merged_batches_df = merged_batches_df.loc[merged_batches_df.groupby("index_x")["total_weight"].idxmax()]
+        merged_batches_df = merged_batches_df.loc[merged_batches_df.groupby("index_y")["total_weight"].idxmax()]
+        # update the batches
+        for index, row in merged_batches_df.iterrows():
+            self.batches[row.index_x].extend(self.batches.pop(row.index_y))
+        return True
+
+    def update_solution(self):
+        """
+        function to update the solution after changing the assignment of orders to batches
+        --> lösung des tsp muss ausgelagert werden. am ende dann eine funktion die alles aufruft aber selber keine
+        heurisitk mehr implementiert
+        :return:
+        """
+        pass
 
 if __name__ == "__main__":
     greedy = GreedyHeuristic()
@@ -379,3 +421,5 @@ if __name__ == "__main__":
     print("runtime: ", time.time() - starttime)
     print("fitness: ", greedy.get_fitness_of_solution(solution))
     print(solution)
+    print(greedy.orders_of_batches)
+    print(greedy.get_weight_per_batch())
