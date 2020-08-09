@@ -19,7 +19,7 @@ from xml.dom import minidom
 import rafs_instance as instance
 from collections import defaultdict, Iterable
 from collections import defaultdict, Iterable
-
+from utils import Batch
 
 layoutFile = r'data/layout/1-1-1-2-1.xlayo'
 podInfoFile = 'data/sku24/pods_infos.txt'
@@ -119,18 +119,6 @@ class WarehouseDateProcessing():
                     d_ij[i, j] = dist
 
         return d_ij
-
-
-# container class for a batch
-class Batch:
-    def __init__(self, ID, pack_station, cobot=None):
-        self.ID = ID
-        self.orders = []
-        self.items = []
-        self.route = []
-        self.weight = 0
-        self.cobot = cobot
-        self.pack_station = pack_station
 
 
 class Demo():
@@ -273,40 +261,6 @@ class GreedyHeuristic(Demo):
             orders_of_stations[station_of_order].append(order_id)
         return orders_of_stations
 
-    def count_min_distances_for_order(self, order_idx, forbidden=None):
-        """
-        greedy: for any item of the current batch (specified in order_idx) the order which has an item that
-        minimizes the distance to that item over all items of all unassigned order of the same station is
-        determined (alternatively we can measure the total minimum distance of the items of an order to
-        all the items in the current batch --> might be more informative)
-        :param order_idx:
-        :param forbidden:
-        :return:
-        """
-        if forbidden is None:
-            forbidden = []  # to exclude orders that don´t fit in the batch anymore due to limited capacity
-        order_idx = [order_idx] if not isinstance(order_idx, list) else order_idx
-        station_assignments = self.assign_orders_to_stations()
-        station_of_order = [k for k, v in station_assignments.items() if any([idx in v for idx in order_idx])][0]
-        other_orders_of_station = list(set(station_assignments[station_of_order]).difference(set(order_idx+forbidden)))
-        print("other unassigned orders in the same station ({}) as this order: ".format(station_of_order),
-              other_orders_of_station)
-        count_min_dist_items_to_order = defaultdict(int)
-        min_dist_to_item = dict()
-        for idx in order_idx:
-            for item in self.get_items_by_order(idx):
-                min_dist_to_item_for_order = dict()
-                for order in other_orders_of_station:
-                    dists_to_item = []
-                    for item2 in self.get_items_by_order(order):
-                        dists_to_item.append(self.distance_ij[self.item_id_pod_id_dict[item], self.item_id_pod_id_dict[item2]])
-                    min_dist_to_item_for_order[order] = min(dists_to_item)
-                min_dist_to_item[item] = min(min_dist_to_item_for_order.keys(),
-                                             key=(lambda k: min_dist_to_item_for_order[k]))
-                count_min_dist_items_to_order[
-                    min(min_dist_to_item_for_order.keys(), key=(lambda k: min_dist_to_item_for_order[k]))] += 1
-        return max(count_min_dist_items_to_order.keys(), key=(lambda k: count_min_dist_items_to_order[k]))
-
     def get_all_items_of_batch(self, batch):
         items = []
         for order in batch:
@@ -315,8 +269,7 @@ class GreedyHeuristic(Demo):
 
     def greedy_next_order_to_batch(self, batch: Batch, already_assigned, orders_of_station, forbidden=None):
         if forbidden is None:
-            forbidden = []  # to exclude orders that don´t fit in the batch anymore due to limited capacity
-        other_orders_of_station = list(set(orders_of_station).difference(set(already_assigned + forbidden))) # todo Order auch als eigene Klasse (child von Order mit neuen attributen)
+            forbidden = []  # to exclude orders that don´t fit in the batch anymore due to limited capacity # todo Order auch als eigene Klasse (child von Order mit neuen attributen)
         other_orders_of_station = np.setdiff1d(orders_of_station, already_assigned+forbidden)
         print("other unassigned orders in the same station ({}) as this batch: ".format(batch.pack_station), other_orders_of_station)
         sum_min_dist_to_item = dict()
@@ -381,9 +334,13 @@ class GreedyHeuristic(Demo):
         for pack_station in self.warehouseInstance.OutputStations.keys():
             self.assign_orders_to_batches_greedy(pack_station)
         self.greedy_cobot_tour()
+        merge_batches = True
+        while merge_batches:
+            merge_batches = self.merge_batches_of_stations()
+            self.update_solution()
 
     def get_weight_per_batch(self):
-        weight_dict = defaultdict(int)
+        weight_dict = dict()
         for batch_id, batch in self.batches.items():
             weight_dict[batch_id] = batch.weight
         return weight_dict
@@ -397,22 +354,38 @@ class GreedyHeuristic(Demo):
                 weight_of_merged_batches[i, j] = weight_i + weight_j
         # exclude similar elements, i.e. (i,j) = (j,i) --> drop (i,j) by using upper triangular of matrix
         merged_batches_df = pd.DataFrame(np.triu(weight_of_merged_batches, k=1),
-                                         columns=weight_dict.keys(), index=weight_dict.keys()).reset_index().melt(id_vars="index")
+                                         columns=list(weight_dict.keys()), index=list(weight_dict.keys()))\
+            .reset_index().melt(id_vars="index")
         merged_batches_df.columns = ["index_x", "index_y", "total_weight"]
         merged_batches_df = merged_batches_df[(merged_batches_df.total_weight > 0) &
                                               (merged_batches_df.total_weight < self.batch_weight)]
-        if merged_batches_df.empty():
+        if merged_batches_df.empty:
             return False
         # get the merge that results in the highest workload of the cobot (in terms of capacity)
         merged_batches_df = merged_batches_df.loc[merged_batches_df.groupby("index_x")["total_weight"].idxmax()]
         merged_batches_df = merged_batches_df.loc[merged_batches_df.groupby("index_y")["total_weight"].idxmax()]
         # update the batches
         for index, row in merged_batches_df.iterrows():
-            self.batches[row.index_x].extend(self.batches.pop(row.index_y))
+            self.batches[row.index_x].route.extend(self.batches.pop(row.index_y).route)
+            self.update_batches()
         return True
 
-    def update_batch(self):
-        pass
+    def update_batches(self, merged_batches_df):
+        for index, row in merged_batches_df.iterrows():
+            batch1 = self.batches[row.index_x]
+            batch2 = self.batches[row.index_y]
+            if len(batch1.orders) >= len(batch2.orders):
+                update_batch = batch1
+                delete_batch = batch2
+            else:
+                update_batch = batch2
+                delete_batch = batch1
+            update_batch.route.extend(delete_batch.route)
+            update_batch.orders.extend(delete_batch.orders)
+            update_batch.items.extend(delete_batch.items)
+            update_batch.weight += delete_batch.weight
+            self.batches[delete_batch.ID].pop()
+            del delete_batch
 
     def update_solution(self):
         """
@@ -435,3 +408,4 @@ if __name__ == "__main__":
     # print(greedy.orders_of_batches)
     # print(greedy.get_weight_per_batch())
     print(greedy.get_fitness_of_solution())
+    greedy.merge_batches_of_stations()
