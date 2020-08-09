@@ -23,19 +23,25 @@ from utils import Batch
 import copy
 import random
 
+# ------------------------------------------- CONFIG -------------------------------------------------------------------
+SKU = "360"  # options: 24 and 360
+
 layoutFile = r'data/layout/1-1-1-2-1.xlayo'
-podInfoFile = 'data/sku24/pods_infos.txt'
+podInfoFile = 'data/sku{}/pods_infos.txt'.format(SKU)
 
 instances = {}
-instances[24, 2] = r'data/sku24/layout_sku_24_2.xml'
+instances[24, 2] = r'data/sku{}/layout_sku_{}_2.xml'.format(SKU, SKU)
 
 storagePolicies = {}
-storagePolicies['dedicated'] = 'data/sku24/pods_items_dedicated_1.txt'
-# storagePolicies['mixed'] = 'data/sku24/pods_items_mixed_shevels_1-5.txt'
+storagePolicies['dedicated'] = 'data/sku{}/pods_items_dedicated_1.txt'.format(SKU)
+# storagePolicies['mixed'] = 'data/sku{}/pods_items_mixed_shevels_1-5.txt'.format(SKU)
 
 orders = {}
-orders['10_5'] = r'data/sku24/orders_10_mean_5_sku_24.xml'
-# orders['20_5'] = r'data/sku24/orders_20_mean_5_sku_24.xml'
+orders['10_5'] = r'data/sku{}/orders_10_mean_5_sku_{}.xml'.format(SKU, SKU)
+# orders['20_5'] = r'data/sku{}/orders_20_mean_5_sku_{}.xml'.format(SKU, SKU)
+
+# ----------------------------------------------------------------------------------------------------------------------
+
 
 class WarehouseDateProcessing():
     def __init__(self, warehouseInstance, batch_size=None):
@@ -128,6 +134,7 @@ class Demo():
 
         self.batch_weight = 18
         self.item_id_pod_id_dict = {}
+        self.station_id_bot_id_dict = dict()
         # [0]
         self.warehouseInstance = self.prepareData()
         self.distance_ij = self.initData()
@@ -176,6 +183,10 @@ class Demo():
                 color, product = ids.split("/")
                 item_id = trie[product][color]
                 self.item_id_pod_id_dict[item_id] = key
+
+    def fill_station_id_bot_id_dict(self):
+        for key, bot in self.warehouseInstance.Bots.items():
+            self.station_id_bot_id_dict[bot.OutputStation] = key
 
     # define get functions for better readability and accessibility of data
     def get_items_by_order(self, order_idx):
@@ -229,8 +240,10 @@ class GreedyHeuristic(Demo):
         self.solution = None
         self.orders_of_batches = dict()
         self.batches = dict()
+        self.batch_count = 0
         super(GreedyHeuristic, self).__init__()
         self.fill_item_id_pod_id_dict()
+        self.fill_station_id_bot_id_dict()
         self.warehouseInstance.Orders = {str(key): value for key, value in enumerate(self.warehouseInstance.Orders)}
 
     def get_station_with_min_total_distance(self, order_idx, retrieve_station_only=False):
@@ -292,13 +305,12 @@ class GreedyHeuristic(Demo):
             sum_min_dist_to_item[order] = np.sum(min_distances)  # average instead? otherwise we always pick small orders
         return min(sum_min_dist_to_item.keys(), key=(lambda k: sum_min_dist_to_item[k]))
 
-    def assign_orders_to_batches_greedy(self, pack_station_idx):
-        orders_of_station = self.assign_orders_to_stations()[pack_station_idx]
+    def assign_orders_to_batches_greedy(self, pack_station):
+        orders_of_station = self.assign_orders_to_stations()[pack_station]
         already_assigned = list()
-        batch_count = 0
         while len(already_assigned) != len(orders_of_station):
-            batch_id = pack_station_idx + "_" + str(batch_count)
-            batch = Batch(batch_id, pack_station_idx)
+            batch_id = pack_station + "_" + str(self.batch_count)
+            batch = Batch(batch_id, pack_station, self.station_id_bot_id_dict[pack_station])
             print("initialized new batch with ID: ", batch.ID)
             # initialize the batch with a random order
             init_order = np.random.choice(np.setdiff1d(orders_of_station, already_assigned))
@@ -323,7 +335,7 @@ class GreedyHeuristic(Demo):
                     forbidden_for_batch.append(new_order)
                 print("the current batch ({}) looks as follows: {}".format(batch.ID, batch.orders))
             self.batches[batch_id] = batch
-            batch_count += 1
+            self.batch_count += 1
 
     def greedy_cobot_tour(self, batch: Batch):
         items = np.unique(batch.items)
@@ -375,10 +387,10 @@ class GreedyHeuristic(Demo):
         merged_batches_df = merged_batches_df.loc[merged_batches_df.groupby("index_x")["total_weight"].idxmax()]
         merged_batches_df = merged_batches_df.loc[merged_batches_df.groupby("index_y")["total_weight"].idxmax()]
         # update the batches
-        self.update_batches(merged_batches_df)
+        self.update_batches_after_merge(merged_batches_df)
         return True
 
-    def update_batches(self, merged_batches_df):
+    def update_batches_after_merge(self, merged_batches_df):
         for index, row in merged_batches_df.iterrows():
             batch1 = self.batches[row.index_x]
             batch2 = self.batches[row.index_y]
@@ -391,8 +403,10 @@ class GreedyHeuristic(Demo):
             update_batch.orders.extend(delete_batch.orders)
             update_batch.items.extend(delete_batch.items)
             update_batch.weight += delete_batch.weight
+            # delete previous route
+            update_batch.route = []
             self.greedy_cobot_tour(update_batch)
-            self.batches[delete_batch.ID].pop()
+            self.batches.pop(delete_batch.ID)
             del delete_batch
 
     def update_solution(self):
@@ -404,27 +418,16 @@ class GreedyHeuristic(Demo):
         """
         pass
 
-class SimulatedAnnealing(Demo):
+class SimulatedAnnealing(GreedyHeuristic):
 
     def __init__(self):
         super(SimulatedAnnealing, self).__init__()
-        self.fill_item_id_pod_id_dict()
         # Simulated Annealing Parameters
         self.alpha = 0.99
         self.T = 0.6
         self.iteration = 1
         self.maxIteration = 1000
         self.minTemperature = 1e-10
-
-        # Run the greedy heuristic and get the current solution with the current fitness value
-        greedy = GreedyHeuristic()
-        greedy.apply_greedy_heuristic()
-
-        self.greedyFitness = greedy.get_fitness_of_solution()
-        print("Fitness of greedy solution: ", self.greedyFitness)
-        self.currentSolution, self.currentFitness = greedy.batches, self.greedyFitness
-
-        # Accept the new tour for all cases where fitness of candidate < fitness current
 
     def accept(self, current_route, candidate_route, pack_station):
 
@@ -456,6 +459,17 @@ class SimulatedAnnealing(Demo):
 
     def simulatedAnnealing(self):
 
+        if not self.batches:
+            # Run the greedy heuristic and get the current solution with the current fitness value
+            self.apply_greedy_heuristic()
+
+            self.greedyFitness = self.get_fitness_of_solution()
+            print("Fitness of greedy solution: ", self.greedyFitness)
+            self.currentSolution, self.currentFitness = self.batches, self.greedyFitness
+        else:
+            self.currentSolution, self.currentFitness = self.batches, self.get_fitness_of_solution()
+        # Accept the new tour for all cases where fitness of candidate < fitness current
+
         currenSolutionCopy = copy.deepcopy(self.currentSolution)
 
         print("Starting simulated annealing")
@@ -482,19 +496,80 @@ class SimulatedAnnealing(Demo):
         self.batches = self.currentSolution
         print("Fitness of Simulated Annealing: ", self.get_fitness_of_solution())
 
-if __name__ == "__main__":
-    np.random.seed(123)
-    greedy = GreedyHeuristic()
-    starttime = time.time()
-    # solution = greedy.apply_greedy_heuristic()
-    greedy.apply_greedy_heuristic()
-    # print("runtime: ", time.time() - starttime)
-    # print("fitness: ", greedy.get_fitness_of_solution(solution))
-    # print(solution)
-    # print(greedy.orders_of_batches)
-    # print(greedy.get_weight_per_batch())
-    print(greedy.get_fitness_of_solution())
-    greedy.merge_batches_of_stations()
 
-    simAnn = SimulatedAnnealing()
-    simAnn.simulatedAnnealing()
+class IteratedLocalSearch(SimulatedAnnealing):
+    def __init__(self):
+        super(IteratedLocalSearch, self).__init__()
+        self.simulatedAnnealing()
+
+    def perturbation(self):
+        print("Performing perturbation")
+        weight_dict = self.get_weight_per_batch()
+        probabilities = []
+        keys = []
+        for key, weight in weight_dict.items():
+            probabilities.append(1-weight/self.batch_weight)
+            keys.append(key)
+        probabilities = [float(i) / sum(probabilities) for i in probabilities]
+        if any([i < 0 for i in probabilities]):
+            make_me_cry = 1
+            pass
+        destroy_batch = np.random.choice(keys, p=probabilities)
+        # destroy_batch = np.random.choice(keys)
+        weight_dict.pop(destroy_batch)
+        orders = self.batches[destroy_batch].orders
+        weight_of_orders = {}
+        for order in orders:
+            weight_of_orders[order] = self.get_total_weight_by_order(order)
+        weight_of_orders = {k: v for k, v in sorted(weight_of_orders.items(), key=lambda item: item[1], reverse=True)}
+        for order, weight_of_order in weight_of_orders.items():
+            candidate_batches = {}
+            for key, weight in weight_dict.items():
+                if weight_of_order+weight <= self.batch_weight:
+                    candidate_batches[key] = weight_of_order+weight
+            if not candidate_batches:
+                pack_station = self.get_station_with_min_total_distance(order, True)
+                batch_id = pack_station + "_" + str(self.batch_count)  # todo make batch count accessible
+                self.batches[batch_id] = Batch(batch_id, pack_station, self.station_id_bot_id_dict[pack_station])
+                self.update_batches_from_new_order(order, batch_id)
+                self.batch_count += 1
+            else:
+                # choose the batch with maximum workload after assignment
+                new_batch_of_order = max(candidate_batches.keys(), key=(lambda k: candidate_batches[k]))
+                self.update_batches_from_new_order(new_order=order, batch_id=new_batch_of_order)
+            # update weight_dict
+            weight_dict = self.get_weight_per_batch()
+        self.batches.pop(destroy_batch)
+
+    def update_batches_from_new_order(self, new_order, batch_id):
+        update_batch = self.batches[batch_id]
+        update_batch.orders.append(new_order)
+        update_batch.items.extend(self.get_items_by_order(new_order))
+        update_batch.weight += self.get_total_weight_by_order(new_order)
+        update_batch.route = []
+        self.greedy_cobot_tour(update_batch)
+        self.simulatedAnnealing()
+
+
+if __name__ == "__main__":
+    np.random.seed(5237668)
+    # greedy = GreedyHeuristic()
+    # # starttime = time.time()
+    # greedy.apply_greedy_heuristic()
+    # #
+    # print("greedy fitness: ", greedy.get_fitness_of_solution())
+    # greedy.merge_batches_of_stations()
+    # print("greedy fitness after merge: ", greedy.get_fitness_of_solution())
+    # simAnn = SimulatedAnnealing()
+    # simAnn.simulatedAnnealing()
+
+    ils = IteratedLocalSearch()
+    iters = 0
+    best_fit = ils.get_fitness_of_solution()
+    while iters < 30:
+        iters += 1
+        ils.perturbation()
+        curr_fit = ils.get_fitness_of_solution()
+        if curr_fit < best_fit:
+            best_fit = curr_fit
+    print("fitness after ils: ", best_fit)
