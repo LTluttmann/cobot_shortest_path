@@ -20,6 +20,8 @@ import rafs_instance as instance
 from collections import defaultdict, Iterable
 from collections import defaultdict, Iterable
 from utils import Batch
+import copy
+import random
 
 layoutFile = r'data/layout/1-1-1-2-1.xlayo'
 podInfoFile = 'data/sku24/pods_infos.txt'
@@ -207,6 +209,14 @@ class Demo():
         distances.append(self.distance_ij[batch.pack_station, self.item_id_pod_id_dict[batch.route[-1]]])
         return np.sum(distances)
 
+    def get_fitness_of_tour(self, batch_route, pack_station):
+        distances = []
+        distances.append(self.distance_ij[pack_station, self.item_id_pod_id_dict[batch_route[0]]])
+        for first, second in zip(batch_route, batch_route[1:]):
+            distances.append(self.distance_ij[self.item_id_pod_id_dict[first], self.item_id_pod_id_dict[second]])
+        distances.append(self.distance_ij[pack_station, self.item_id_pod_id_dict[batch_route[-1]]])
+        return np.sum(distances)
+
     def get_fitness_of_solution(self):
         distances = []
         for batch in self.batches.values():
@@ -315,25 +325,25 @@ class GreedyHeuristic(Demo):
             self.batches[batch_id] = batch
             batch_count += 1
 
-    def greedy_cobot_tour(self):
-        for batch_id, batch in self.batches.items():
-            items = np.unique(batch.items)
-            distances_to_station = {item: self.distance_ij[batch.pack_station, self.item_id_pod_id_dict[item]]
-                                    for item in items}
-            min_item = min(distances_to_station.keys(), key=(lambda k: distances_to_station[k]))
-            batch.route.append(min_item)  # TODO in items tauchen doppelte einträge auf. Wie geht man damit um?
-            while len(batch.route) != len(items):
-                distances_to_current_item = {
-                    item: self.distance_ij[self.item_id_pod_id_dict[batch.route[-1]], self.item_id_pod_id_dict[item]]
-                    for item in np.setdiff1d(items, batch.route)
-                }
-                min_item = min(distances_to_current_item.keys(), key=(lambda k: distances_to_current_item[k]))
-                batch.route.append(min_item)
+    def greedy_cobot_tour(self, batch: Batch):
+        items = np.unique(batch.items)
+        distances_to_station = {item: self.distance_ij[batch.pack_station, self.item_id_pod_id_dict[item]]
+                                for item in items}
+        min_item = min(distances_to_station.keys(), key=(lambda k: distances_to_station[k]))
+        batch.route.append(min_item)  # TODO in items tauchen doppelte einträge auf. Wie geht man damit um?
+        while len(batch.route) != len(items):
+            distances_to_current_item = {
+                item: self.distance_ij[self.item_id_pod_id_dict[batch.route[-1]], self.item_id_pod_id_dict[item]]
+                for item in np.setdiff1d(items, batch.route)
+            }
+            min_item = min(distances_to_current_item.keys(), key=(lambda k: distances_to_current_item[k]))
+            batch.route.append(min_item)
 
     def apply_greedy_heuristic(self):
         for pack_station in self.warehouseInstance.OutputStations.keys():
             self.assign_orders_to_batches_greedy(pack_station)
-        self.greedy_cobot_tour()
+        for batch in self.batches.values():
+            self.greedy_cobot_tour(batch)
         merge_batches = True
         while merge_batches:
             merge_batches = self.merge_batches_of_stations()
@@ -365,9 +375,7 @@ class GreedyHeuristic(Demo):
         merged_batches_df = merged_batches_df.loc[merged_batches_df.groupby("index_x")["total_weight"].idxmax()]
         merged_batches_df = merged_batches_df.loc[merged_batches_df.groupby("index_y")["total_weight"].idxmax()]
         # update the batches
-        for index, row in merged_batches_df.iterrows():
-            self.batches[row.index_x].route.extend(self.batches.pop(row.index_y).route)
-            self.update_batches()
+        self.update_batches(merged_batches_df)
         return True
 
     def update_batches(self, merged_batches_df):
@@ -380,10 +388,10 @@ class GreedyHeuristic(Demo):
             else:
                 update_batch = batch2
                 delete_batch = batch1
-            update_batch.route.extend(delete_batch.route)
             update_batch.orders.extend(delete_batch.orders)
             update_batch.items.extend(delete_batch.items)
             update_batch.weight += delete_batch.weight
+            self.greedy_cobot_tour(update_batch)
             self.batches[delete_batch.ID].pop()
             del delete_batch
 
@@ -395,6 +403,84 @@ class GreedyHeuristic(Demo):
         :return:
         """
         pass
+
+class SimulatedAnnealing(Demo):
+
+    def __init__(self):
+        super(SimulatedAnnealing, self).__init__()
+        self.fill_item_id_pod_id_dict()
+        # Simulated Annealing Parameters
+        self.alpha = 0.99
+        self.T = 0.6
+        self.iteration = 1
+        self.maxIteration = 1000
+        self.minTemperature = 1e-10
+
+        # Run the greedy heuristic and get the current solution with the current fitness value
+        greedy = GreedyHeuristic()
+        greedy.apply_greedy_heuristic()
+
+        self.greedyFitness = greedy.get_fitness_of_solution()
+        print("Fitness of greedy solution: ", self.greedyFitness)
+        self.currentSolution, self.currentFitness = greedy.batches, self.greedyFitness
+
+        # Accept the new tour for all cases where fitness of candidate < fitness current
+
+    def accept(self, current_route, candidate_route, pack_station):
+
+        currentFitness = self.get_fitness_of_tour(current_route, pack_station)
+        candidateFitness = self.get_fitness_of_tour(candidate_route, pack_station)
+
+        # print("currentfit:",currentFitness)
+        # print("candidatefit:",candidateFitness)
+
+        if candidateFitness < currentFitness:
+            return True
+        else:
+            if np.random.random() < self.acceptWithProbability(candidateFitness, currentFitness):
+                return True
+
+        # Accept the new tour for all cases where fitness of candidate => fitness current with a probability
+
+    def acceptWithProbability(self, candidateFitness, currentFitness):
+
+        return math.exp(-abs(candidateFitness - currentFitness) / self.T)
+
+    # Swaps the position of two points in the solution of each batch
+    def swap(self, seq):
+        # length is the length of the tour of one batch
+        length = range(len(seq))
+        i1, i2 = random.sample(length, 2)
+        seq[i1], seq[i2] = seq[i2], seq[i1]
+        return seq
+
+    def simulatedAnnealing(self):
+
+        currenSolutionCopy = copy.deepcopy(self.currentSolution)
+
+        print("Starting simulated annealing")
+
+        while self.T >= self.minTemperature and self.iteration < self.maxIteration:
+
+            for batch_id, batch in self.currentSolution.items():
+
+                if len(batch.route) > 1:
+
+                    pointCopy = batch.route[:]
+
+                    candidate = self.swap(pointCopy)
+                    # print("Current",point)
+                    # print("Candidate",candidate)
+
+                    if self.accept(batch.route, candidate, batch.pack_station):
+                        currenSolutionCopy[batch_id].route = candidate
+
+            self.currentSolution = copy.deepcopy(currenSolutionCopy)
+            self.T *= self.alpha
+            self.iteration += 1
+
+        self.batches = self.currentSolution
+        print("Fitness of Simulated Annealing: ", self.get_fitness_of_solution())
 
 if __name__ == "__main__":
     np.random.seed(123)
@@ -409,3 +495,6 @@ if __name__ == "__main__":
     # print(greedy.get_weight_per_batch())
     print(greedy.get_fitness_of_solution())
     greedy.merge_batches_of_stations()
+
+    simAnn = SimulatedAnnealing()
+    simAnn.simulatedAnnealing()
