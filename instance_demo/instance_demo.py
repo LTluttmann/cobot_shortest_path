@@ -24,7 +24,7 @@ import copy
 import random
 
 # ------------------------------------------- CONFIG -------------------------------------------------------------------
-SKU = "360"  # options: 24 and 360
+SKU = "24"  # options: 24 and 360
 
 layoutFile = r'data/layout/1-1-1-2-1.xlayo'
 podInfoFile = 'data/sku{}/pods_infos.txt'.format(SKU)
@@ -33,12 +33,12 @@ instances = {}
 instances[24, 2] = r'data/sku{}/layout_sku_{}_2.xml'.format(SKU, SKU)
 
 storagePolicies = {}
-storagePolicies['dedicated'] = 'data/sku{}/pods_items_dedicated_1.txt'.format(SKU)
-# storagePolicies['mixed'] = 'data/sku{}/pods_items_mixed_shevels_1-5.txt'.format(SKU)
+# storagePolicies['dedicated'] = 'data/sku{}/pods_items_dedicated_1.txt'.format(SKU)
+storagePolicies['mixed'] = 'data/sku{}/pods_items_mixed_shevels_1-5.txt'.format(SKU)
 
 orders = {}
 orders['10_5'] = r'data/sku{}/orders_10_mean_5_sku_{}.xml'.format(SKU, SKU)
-# orders['20_5'] = r'data/sku{}/orders_20_mean_5_sku_{}.xml'.format(SKU, SKU)
+#orders['20_5'] = r'data/sku{}/orders_20_mean_5_sku_{}.xml'.format(SKU, SKU)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -279,7 +279,7 @@ class GreedyHeuristic(Demo):
         :return:
         """
         orders_of_stations = defaultdict(list)
-        for order_id, order in self.warehouseInstance.Orders.items():  # todo: give orders an ID instead of enumeration
+        for order_id, order in self.warehouseInstance.Orders.items():
             station_of_order = self.get_station_with_min_total_distance(order_id, True)
             orders_of_stations[station_of_order].append(order_id)
         return orders_of_stations
@@ -338,6 +338,10 @@ class GreedyHeuristic(Demo):
             self.batch_count += 1
 
     def greedy_cobot_tour(self, batch: Batch):
+        try:
+            assert len(batch.route) == 0
+        except AssertionError:
+            batch.route = []
         items = np.unique(batch.items)
         distances_to_station = {item: self.distance_ij[batch.pack_station, self.item_id_pod_id_dict[item]]
                                 for item in items}
@@ -352,6 +356,8 @@ class GreedyHeuristic(Demo):
             batch.route.append(min_item)
 
     def apply_greedy_heuristic(self):
+        if self.batches:
+            self.batches = dict()
         for pack_station in self.warehouseInstance.OutputStations.keys():
             self.assign_orders_to_batches_greedy(pack_station)
         for batch in self.batches.values():
@@ -418,36 +424,37 @@ class GreedyHeuristic(Demo):
         """
         pass
 
-class SimulatedAnnealing(GreedyHeuristic):
 
+class SimulatedAnnealing(GreedyHeuristic):
     def __init__(self):
         super(SimulatedAnnealing, self).__init__()
-        # Simulated Annealing Parameters
-        self.alpha = 0.99
-        self.T = 0.6
-        self.iteration = 1
-        self.maxIteration = 1000
-        self.minTemperature = 1e-10
 
-    def accept(self, current_route, candidate_route, pack_station):
-
+    def accept(self, batch: Batch, candidate_route, T, pack_station=None):
+        current_route = batch.route
+        pack_station = batch.pack_station if not pack_station else pack_station
         currentFitness = self.get_fitness_of_tour(current_route, pack_station)
         candidateFitness = self.get_fitness_of_tour(candidate_route, pack_station)
-
         # print("currentfit:",currentFitness)
         # print("candidatefit:",candidateFitness)
-
         if candidateFitness < currentFitness:
             return True
         else:
-            if np.random.random() < self.acceptWithProbability(candidateFitness, currentFitness):
+            if np.random.random() < self.acceptWithProbability(candidateFitness, currentFitness, T):
                 return True
 
+    def acceptWithProbability(self, candidateFitness, currentFitness, T):
         # Accept the new tour for all cases where fitness of candidate => fitness current with a probability
+        return math.exp(-abs(candidateFitness - currentFitness) / T)
 
-    def acceptWithProbability(self, candidateFitness, currentFitness):
+    def two_opt(self, tour):
+        length = range(len(tour))
+        i, j = random.sample(length, 2)
+        tour = tour[:]
+        tour[i], tour[j] = tour[j], tour[i]
+        reverse_order = [tour[m] for m in reversed(range(i + 1, j))]
+        tour[i + 1: j] = reverse_order
 
-        return math.exp(-abs(candidateFitness - currentFitness) / self.T)
+        return tour
 
     # Swaps the position of two points in the solution of each batch
     def swap(self, seq):
@@ -457,43 +464,53 @@ class SimulatedAnnealing(GreedyHeuristic):
         seq[i1], seq[i2] = seq[i2], seq[i1]
         return seq
 
-    def simulatedAnnealing(self):
+    def switch_stations(self, batch_id):
+        """
+        TODO: vary the pack station of batches
+        :return:
+        """
+        curr_ps = self.batches[batch_id].pack_station
+        new_ps = np.random.choice(np.setdiff1d(list(self.warehouseInstance.OutputStations.keys()), curr_ps))
+        return new_ps
 
+    def simulatedAnnealing(self, batch_id=None):
+        # Simulated Annealing Parameters
         if not self.batches:
             # Run the greedy heuristic and get the current solution with the current fitness value
             self.apply_greedy_heuristic()
-
             self.greedyFitness = self.get_fitness_of_solution()
             print("Fitness of greedy solution: ", self.greedyFitness)
-            self.currentSolution, self.currentFitness = self.batches, self.greedyFitness
+            currentSolution, currentFitness = copy.deepcopy(self.batches), self.greedyFitness
         else:
-            self.currentSolution, self.currentFitness = self.batches, self.get_fitness_of_solution()
+            currentSolution, currentFitness = copy.deepcopy(self.batches), self.get_fitness_of_solution()
         # Accept the new tour for all cases where fitness of candidate < fitness current
+        print("Starting simulated annealing with current fitness: ", currentFitness)
+        if batch_id:
+            currentSolution =  {batch_id: currentSolution[batch_id]}
+        for batch_id, batch in currentSolution.items():
+            alpha = 0.975
+            T = 4
+            iteration = 1
+            maxIteration = 1000
+            minTemperature = 0.1
+            if np.random.random() >= 0.8:
+                candidate_ps = self.switch_stations(batch_id)
+                print("New pack station for batch {}: ".format(batch_id), candidate_ps)
+                batch.pack_station = candidate_ps
+                self.greedy_cobot_tour(batch)
+            else:
+                candidate_ps = batch.pack_station
 
-        currenSolutionCopy = copy.deepcopy(self.currentSolution)
-
-        print("Starting simulated annealing")
-
-        while self.T >= self.minTemperature and self.iteration < self.maxIteration:
-
-            for batch_id, batch in self.currentSolution.items():
-
+            while T >= minTemperature and iteration < maxIteration:
                 if len(batch.route) > 1:
-
                     pointCopy = batch.route[:]
-
-                    candidate = self.swap(pointCopy)
-                    # print("Current",point)
-                    # print("Candidate",candidate)
-
-                    if self.accept(batch.route, candidate, batch.pack_station):
-                        currenSolutionCopy[batch_id].route = candidate
-
-            self.currentSolution = copy.deepcopy(currenSolutionCopy)
-            self.T *= self.alpha
-            self.iteration += 1
-
-        self.batches = self.currentSolution
+                    candidate = self.two_opt(pointCopy)
+                    if self.accept(batch, candidate, T, candidate_ps):
+                        currentSolution[batch_id].route = candidate
+                        currentSolution[batch_id].pack_station = candidate_ps
+                T *= alpha
+                iteration += 1
+            self.batches[batch_id] = currentSolution[batch_id]
         print("Fitness of Simulated Annealing: ", self.get_fitness_of_solution())
 
 
@@ -511,13 +528,11 @@ class IteratedLocalSearch(SimulatedAnnealing):
             probabilities.append(1-weight/self.batch_weight)
             keys.append(key)
         probabilities = [float(i) / sum(probabilities) for i in probabilities]
-        if any([i < 0 for i in probabilities]):
-            make_me_cry = 1
-            pass
         destroy_batch = np.random.choice(keys, p=probabilities)
         # destroy_batch = np.random.choice(keys)
         weight_dict.pop(destroy_batch)
         orders = self.batches[destroy_batch].orders
+        self.batches.pop(destroy_batch)
         weight_of_orders = {}
         for order in orders:
             weight_of_orders[order] = self.get_total_weight_by_order(order)
@@ -539,7 +554,7 @@ class IteratedLocalSearch(SimulatedAnnealing):
                 self.update_batches_from_new_order(new_order=order, batch_id=new_batch_of_order)
             # update weight_dict
             weight_dict = self.get_weight_per_batch()
-        self.batches.pop(destroy_batch)
+        print("fitness after perturbation: ", self.get_fitness_of_solution())
 
     def update_batches_from_new_order(self, new_order, batch_id):
         update_batch = self.batches[batch_id]
@@ -548,28 +563,45 @@ class IteratedLocalSearch(SimulatedAnnealing):
         update_batch.weight += self.get_total_weight_by_order(new_order)
         update_batch.route = []
         self.greedy_cobot_tour(update_batch)
-        self.simulatedAnnealing()
+        #print("solution before sim ann: ", self.get_fitness_of_solution())
+        self.simulatedAnnealing(batch_id)
 
+    def perform_ils(self, num_iters, threshold):
+        iter = 0
+        iter_last = 0
+        curr_fit = self.get_fitness_of_solution()
+        best_fit = curr_fit
+        curr_sol = copy.deepcopy(self.batches)
+        best_sol = copy.deepcopy(curr_sol)
+        while iter < num_iters:
+            iter += 1
+            self.perturbation()
+            neighbor_fit = self.get_fitness_of_solution()
+            if neighbor_fit < curr_fit:
+                curr_fit = neighbor_fit  # accept new solution
+                curr_sol = copy.deepcopy(self.batches)
+                iter_last = iter
+                if curr_fit < best_fit:
+                    best_sol = copy.deepcopy(self.batches)
+                    best_fit = self.get_fitness_of_solution()
+            elif neighbor_fit >= curr_fit and (iter - iter_last) > threshold:
+                self.apply_greedy_heuristic()
+                curr_sol = self.get_fitness_of_solution()  # reset
+            else:
+                self.batches = copy.deepcopy(curr_sol)  # don´t accept new solution and stick with the current one
+        return best_sol, best_fit
+
+
+
+
+
+class MixedShelves(Demo):
+    pass
 
 if __name__ == "__main__":
-    np.random.seed(5237668)
-    # greedy = GreedyHeuristic()
-    # # starttime = time.time()
-    # greedy.apply_greedy_heuristic()
-    # #
-    # print("greedy fitness: ", greedy.get_fitness_of_solution())
-    # greedy.merge_batches_of_stations()
-    # print("greedy fitness after merge: ", greedy.get_fitness_of_solution())
-    # simAnn = SimulatedAnnealing()
-    # simAnn.simulatedAnnealing()
-
-    ils = IteratedLocalSearch()
-    iters = 0
-    best_fit = ils.get_fitness_of_solution()
-    while iters < 30:
-        iters += 1
-        ils.perturbation()
-        curr_fit = ils.get_fitness_of_solution()
-        if curr_fit < best_fit:
-            best_fit = curr_fit
-    print("fitness after ils: ", best_fit)
+    np.random.seed(523168)
+    # ils = IteratedLocalSearch()
+    # best_sol, best_fit = ils.perform_ils(200, 100)
+    # print("fitness after ils: ", best_fit)
+    _demo = Demo()
+    print(_demo)
