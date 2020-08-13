@@ -19,7 +19,7 @@ from xml.dom import minidom
 import rafs_instance as instance
 from collections import defaultdict, Iterable
 from collections import defaultdict, Iterable
-from utils import Batch
+from utils import *
 import copy
 import random
 
@@ -592,16 +592,151 @@ class IteratedLocalSearch(SimulatedAnnealing):
         return best_sol, best_fit
 
 
+# ----------------------------------------------------------------------------------------------------------------------
 
 
+class GreedyMixedShelves(Demo):
+    def __init__(self):
+        super(GreedyMixedShelves, self).__init__()
+        self.item_id_pod_id_dict = defaultdict(dict)
+        self.solution = None
+        self.orders_of_batches = dict()
+        self.batches = dict()
+        self.batch_count = 0
+        self.fill_item_id_pod_id_dict()
+        self.fill_station_id_bot_id_dict()
+        self.warehouseInstance.Orders = {str(key): value for key, value in enumerate(self.warehouseInstance.Orders)}
 
-class MixedShelves(Demo):
-    pass
+    def fill_item_id_pod_id_dict(self):
+        trie = self.build_trie_for_items()
+        for key, pod in self.warehouseInstance.Pods.items():
+            for item in pod.Items:
+                ids = item.ID
+                color, product = ids.split("/")
+                item_id = trie[product][color]
+                self.item_id_pod_id_dict[item_id][key] = int(item.Count)
+
+    def get_items_plus_quant_by_order(self, order_idx) -> dict:
+        item_ids = dict()
+        for item_id, item in self.warehouseInstance.Orders[order_idx].Positions.items():
+            item_ids[item_id] = item.Count
+        return item_ids
+
+    def get_station_with_min_total_distance(self, order_idx, retrieve_station_only=False):
+        """
+        function to retrieve the station which minimizes the total distance of the items of the
+        specified order
+        :param order_idx: index or the order
+        :param retrieve_station_only: indicates whether to return the station with min distance only or
+        a together with the distance which can be used for further decision making.
+        :return:
+        """
+        items = self.get_items_plus_quant_by_order(order_idx)
+        item_id_pod_id_dict = copy.deepcopy(self.item_id_pod_id_dict)
+        order_pack_dists = dict()
+        for pack_station in list(self.warehouseInstance.OutputStations.keys()):
+            item_dists = []
+            for item_id, item_quant in items.items():
+                shelves_with_item = list(item_id_pod_id_dict[item_id].keys())
+                shelf_distances = {}
+                for shelf in shelves_with_item:
+                    if item_id_pod_id_dict[item_id][shelf] >= int(item_quant):  # TODO refactor item count so that it is integer
+                        shelf_distances[shelf] = self.distance_ij[pack_station, shelf]
+                shelf_with_min_dist = min(shelf_distances.keys(), key=(lambda k: shelf_distances[k]))
+                item_id_pod_id_dict[item_id][shelf_with_min_dist] -= int(item_quant)
+                item_dists.append(shelf_distances[shelf_with_min_dist])
+            order_pack_dists[pack_station] = np.sum(item_dists)
+        return min(order_pack_dists.keys(), key=(lambda k: order_pack_dists[k]))
+
+
+    def get_closest_shelf_for_item_from_node(self, curr_node, item):
+        shelves = list(self.item_id_pod_id_dict[item].keys())
+        distances_to_node = dict()
+        for shelf in shelves:
+            distances_to_node[shelf] = self.distance_ij[shelf, curr_node]
+        return min(distances_to_node.keys(), key=(lambda k: distances_to_node[k]))
+
+
+    def assign_orders_to_stations(self):
+        """
+        assigns an order to a given station according to the minimum total distance. May lead to unbalanced
+        assignments, e.g. that all orders are assigned to only one station.
+        :return:
+        """
+        orders_of_stations = defaultdict(list)
+        for order_id, order in self.warehouseInstance.Orders.items():
+            station_of_order = self.get_station_with_min_total_distance(order_id, True)
+            orders_of_stations[station_of_order].append(order_id)
+        return orders_of_stations
+
+    def get_all_items_of_batch(self, batch):
+        items = []
+        for order in batch:
+            items.extend(self.get_items_by_order(order))
+        return items
+
+    def greedy_next_order_to_batch(self, batch: BatchNew, already_assigned, orders_of_station, forbidden=None):
+        if forbidden is None:
+            forbidden = []
+        other_orders_of_station = np.setdiff1d(orders_of_station, already_assigned+forbidden)
+        print("other unassigned orders in the same station ({}) as this batch: ".format(batch.pack_station), other_orders_of_station)
+        sum_min_dist_to_item = dict()
+        for order in other_orders_of_station:
+            min_distances = []
+            for item_in_batch_id, item_in_batch in batch.items.items():
+                dist_per_item_to_curr_item = []
+                for item in self.get_items_by_order(order):
+                    min_dist_shelf = min([self.distance_ij[item_in_batch.shelf, shelf] for shelf in list(self.item_id_pod_id_dict[item].keys())])
+                    dist_per_item_to_curr_item.append(min_dist_shelf)
+                min_distances.append(min(dist_per_item_to_curr_item))
+
+            sum_min_dist_to_item[order] = np.sum(min_distances)  # average instead? otherwise we always pick small orders
+
+        return min(sum_min_dist_to_item.keys(), key=(lambda k: sum_min_dist_to_item[k]))
+
+    def assign_orders_to_batches_greedy(self, pack_station):
+        orders_of_station = self.assign_orders_to_stations()[pack_station]
+        already_assigned = list()
+        while len(already_assigned) != len(orders_of_station):
+            batch_id = pack_station + "_" + str(self.batch_count)
+            batch = BatchNew(batch_id, pack_station, self.station_id_bot_id_dict[pack_station])
+            print("initialized new batch with ID: ", batch.ID)
+            # initialize the batch with a random order
+            init_order = np.random.choice(np.setdiff1d(orders_of_station, already_assigned))
+            items_of_order = self.get_items_by_order(init_order)
+            init_order = OrderOfBatch(init_order, items_of_order)
+            batch.add_order(init_order)
+
+
+            already_assigned.append(init_order.ID)
+
+            batch.weight += self.get_total_weight_by_order(init_order.ID)
+
+            forbidden_for_batch = []
+            while batch.weight < self.batch_weight and not len(
+                    np.union1d(already_assigned, forbidden_for_batch)) == len(orders_of_station):
+
+                new_order = self.greedy_next_order_to_batch(batch, already_assigned, orders_of_station, forbidden_for_batch)
+                weight_of_order = self.get_total_weight_by_order(new_order)
+                print("Chosen order: ", new_order)
+                if (batch.weight + weight_of_order) <= self.batch_weight:
+                    print("and it also fits in the current batch ({})".format(batch_id))
+                    already_assigned.append(new_order)
+                    batch.orders.append(new_order)
+                    batch.items.extend(self.get_items_by_order(new_order))
+                    batch.weight += weight_of_order
+                else:
+                    print("but it would add too much weight to the batch, go on to next...")
+                    forbidden_for_batch.append(new_order)
+                print("the current batch ({}) looks as follows: {}".format(batch.ID, batch.orders))
+            self.batches[batch_id] = batch
+            self.batch_count += 1
 
 if __name__ == "__main__":
     np.random.seed(523168)
     # ils = IteratedLocalSearch()
     # best_sol, best_fit = ils.perform_ils(200, 100)
     # print("fitness after ils: ", best_fit)
-    _demo = Demo()
-    print(_demo)
+    greedy = GreedyMixedShelves()
+    greedy.assign_orders_to_batches_greedy("OutD0")
+    print("")
