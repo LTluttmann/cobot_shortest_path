@@ -191,9 +191,8 @@ class Demo():
     # define get functions for better readability and accessibility of data
     def get_items_by_order(self, order_idx):
         item_ids = []
-        item_idx_keys = list(self.warehouseInstance.Orders[order_idx].Positions.keys())
-        for key in item_idx_keys:
-            item_ids.append(self.warehouseInstance.Orders[order_idx].Positions[key].ItemDescID)
+        for item_id, item in self.warehouseInstance.Orders[order_idx].Positions.items():
+            item_ids.append(item.ItemDescID)
         return item_ids
 
     def get_weight_by_item(self, item_idx):
@@ -374,6 +373,11 @@ class GreedyHeuristic(Demo):
         return weight_dict
 
     def merge_batches_of_stations(self):
+        """
+        if batches (of two different packing stations) can be merged in terms of the weight, this merge
+        is performed in this function.
+        :return:
+        """
         weight_dict = self.get_weight_per_batch()
         # cartesian product of all batches and their corresponding weights
         weight_of_merged_batches = np.zeros(shape=(len(weight_dict.keys()), len(weight_dict.keys())))
@@ -609,6 +613,12 @@ class GreedyMixedShelves(Demo):
         self.count = 0
 
     def fill_item_id_pod_id_dict(self):
+        """
+        For the mixed shelve policy, the amount of items stored in a shelf is a viable information and thus needs
+        to be retrieved here. In a dedicated policy where we assume that the number of items stored in at least equal
+        to the number of ordered items, we dont need the supply quantity.
+        :return:
+        """
         trie = self.build_trie_for_items()
         for key, pod in self.warehouseInstance.Pods.items():
             for item in pod.Items:
@@ -619,18 +629,38 @@ class GreedyMixedShelves(Demo):
 
 
     def get_items_by_order(self, order_idx):
+        """
+        In contrary to the base get_items_by_order function this function returns a list containing an item as
+        often as it has been ordered instead of only containing the unique items of an order. By doing so, each item
+        (even items of the same SKU) are considered as unique and for each item positoin we only need to pick 1 item
+        (quantity) of a shelf (and thus only need to check whether a shelf has more than zero items of that SKU.
+        :param order_idx:
+        :return:
+        """
         item_ids = []
         for item_id, item in self.warehouseInstance.Orders[order_idx].Positions.items():
             item_ids.extend([item_id] * int(item.Count))
         return item_ids
 
     def get_items_plus_quant_by_order(self, order_idx) -> dict:
+        """
+        different approach to get_items_by_order but not implemented / tested yet. Returns a dictionary with unique
+        items plus the order quantity as value.
+        :param order_idx:
+        :return:
+        """
         item_ids = dict()
         for item_id, item in self.warehouseInstance.Orders[order_idx].Positions.items():
-            item_ids[item_id] = item.Count
+            item_ids[item_id] = int(item.Count)
         return item_ids
 
     def get_total_weight_by_order(self, order_idx):
+        """
+        In correspondence with the new get_items_by_order function, the items dont have to be multiplied with
+        the order quantity
+        :param order_idx:
+        :return:
+        """
         weights = []
         items_of_order = self.get_items_by_order(order_idx)
         for item in items_of_order:
@@ -646,7 +676,7 @@ class GreedyMixedShelves(Demo):
         a together with the distance which can be used for further decision making.
         :return:
         """
-        items = self.get_items_plus_quant_by_order(order_idx)
+        items = self.get_items_plus_quant_by_order(order_idx)  # todo refactor with get_items_by_order function
         item_id_pod_id_dict = copy.deepcopy(self.item_id_pod_id_dict)
         order_pack_dists = dict()
         for pack_station in list(self.warehouseInstance.OutputStations.keys()):
@@ -655,10 +685,10 @@ class GreedyMixedShelves(Demo):
                 shelves_with_item = list(item_id_pod_id_dict[item_id].keys())
                 shelf_distances = {}
                 for shelf in shelves_with_item:
-                    if item_id_pod_id_dict[item_id][shelf] >= int(item_quant):  # TODO refactor item count so that it is integer
+                    if item_id_pod_id_dict[item_id][shelf] >= item_quant:
                         shelf_distances[shelf] = self.distance_ij[pack_station, shelf]
                 shelf_with_min_dist = min(shelf_distances.keys(), key=(lambda k: shelf_distances[k]))
-                item_id_pod_id_dict[item_id][shelf_with_min_dist] -= int(item_quant)
+                item_id_pod_id_dict[item_id][shelf_with_min_dist] -= item_quant
                 item_dists.append(shelf_distances[shelf_with_min_dist])
             order_pack_dists[pack_station] = np.sum(item_dists)
         return min(order_pack_dists.keys(), key=(lambda k: order_pack_dists[k]))
@@ -727,9 +757,11 @@ class GreedyMixedShelves(Demo):
 
         return min_item, min_shelf
 
-    def greedy_cobot_tour(self, batch: BatchNew):
+    def greedy_cobot_tour(self, batch: BatchNew, items=None):
         """
-        implements nearest neighbor
+        implements nearest neighbor, maybe nice for dedicated?
+        Problem in MIxed shelves case --> it recalculates the full route every iteration, thus the shelves are emptier
+        than they should be
         :param batch:
         :return:
         """
@@ -756,7 +788,7 @@ class GreedyMixedShelves(Demo):
             items = copy.deepcopy(items)
         if len(batch.route) == 0:
             curr_item, curr_node = self.assign_shelves_to_items(batch.pack_station, list(items.values()))
-            batch.route.append(curr_node)
+            batch.route_append(curr_node)
             items.pop(curr_item)
             batch.items[curr_item].shelf = curr_node
             self.item_id_pod_id_dict[curr_item.split("_")[0]][curr_node] -= 1
@@ -780,11 +812,10 @@ class GreedyMixedShelves(Demo):
             item.shelf = min_position_shelf[min_position]
             node = min_position_shelf[min_position]
             item = item.ID
-            batch.route.insert(min_position, node)
+            batch.route_insert(min_position, node)
             batch.items[item].shelf = node
             self.item_id_pod_id_dict[item.split("_")[0]][node] -= 1
             self.count += 1
-
 
 
     def assign_orders_to_batches_greedy(self, pack_station):
@@ -855,26 +886,90 @@ class GreedyMixedShelves(Demo):
             distances.append(self.get_fitness_of_batch(batch))
         return np.sum(distances)
 
-    def count_num_items_taken(self):
-        shelves_taken = self.item_id_pod_id_dict
-        shelves_orig = self.item_id_pod_id_dict_copy
-        total_taken = []
-        for key1, shelf in shelves_orig.items():
-            for key2, item_count in shelf.items():
-                new = shelves_taken[key1][key2]
-                orig = item_count
-                taken = orig-new
-                total_taken.append(taken)
-        return sum(total_taken)
 
-    def count_num_requested_items(self):
-        req = []
-        for order_key, order in self.warehouseInstance.Orders.items():
-            items = self.get_items_by_order(order_key)
-            req.append(len(items))
-        req = sum(req)
-        taken = self.count_num_items_taken()
-        assert taken==req
+class SimulatedAnnealingMixed(GreedyMixedShelves):
+    def __init__(self):
+        super(SimulatedAnnealingMixed, self).__init__()
+
+    def accept(self, batch: Batch, candidate_route, T, pack_station=None):
+        current_route = batch.route
+        pack_station = batch.pack_station if not pack_station else pack_station
+        currentFitness = self.get_fitness_of_tour(current_route, pack_station)
+        candidateFitness = self.get_fitness_of_tour(candidate_route, pack_station)
+        # print("currentfit:",currentFitness)
+        # print("candidatefit:",candidateFitness)
+        if candidateFitness < currentFitness:
+            return True
+        else:
+            if np.random.random() < self.acceptWithProbability(candidateFitness, currentFitness, T):
+                return True
+
+    def acceptWithProbability(self, candidateFitness, currentFitness, T):
+        # Accept the new tour for all cases where fitness of candidate => fitness current with a probability
+        return math.exp(-abs(candidateFitness - currentFitness) / T)
+
+    def two_opt(self, tour):
+        length = range(len(tour))
+        i, j = random.sample(length, 2)
+        tour = tour[:]
+        tour[i], tour[j] = tour[j], tour[i]
+        reverse_order = [tour[m] for m in reversed(range(i + 1, j))]
+        tour[i + 1: j] = reverse_order
+
+        return tour
+
+    def switch_stations(self, batch_id):
+        """
+        TODO: vary the pack station of batches
+        :return:
+        """
+        curr_ps = self.batches[batch_id].pack_station
+        new_ps = np.random.choice(np.setdiff1d(list(self.warehouseInstance.OutputStations.keys()), curr_ps))
+        return new_ps
+
+    def simulatedAnnealing(self, batch_id=None):
+        # Simulated Annealing Parameters
+        if not self.batches:
+            # Run the greedy heuristic and get the current solution with the current fitness value
+            self.apply_greedy_heuristic()
+            self.greedyFitness = self.get_fitness_of_solution()
+            print("Fitness of greedy solution: ", self.greedyFitness)
+            currentSolution, currentFitness = copy.deepcopy(self.batches), self.greedyFitness
+        else:
+            currentSolution, currentFitness = copy.deepcopy(self.batches), self.get_fitness_of_solution()
+        # Accept the new tour for all cases where fitness of candidate < fitness current
+        print("Starting simulated annealing with current fitness: ", currentFitness)
+        if batch_id:
+            currentSolution =  {batch_id: currentSolution[batch_id]}
+        for batch_id, batch in currentSolution.items():
+            alpha = 0.975
+            T = 4
+            iteration = 1
+            maxIteration = 1000
+            minTemperature = 0.1
+            if np.random.random() >= 2:
+                candidate_ps = self.switch_stations(batch_id)
+                print("New pack station for batch {}: ".format(batch_id), candidate_ps)
+                batch.pack_station = candidate_ps
+                self.greedy_cobot_tour(batch)
+            else:
+                candidate_ps = batch.pack_station
+
+            while T >= minTemperature and iteration < maxIteration:
+                if len(batch.route) > 1:
+                    pointCopy = batch.route[:]
+                    candidate = self.two_opt(pointCopy)
+                    if self.accept(batch, candidate, T, candidate_ps):
+                        currentSolution[batch_id].route = candidate
+                        currentSolution[batch_id].pack_station = candidate_ps
+                T *= alpha
+                iteration += 1
+            self.batches[batch_id] = currentSolution[batch_id]
+        print("Fitness of Simulated Annealing: ", self.get_fitness_of_solution())
+
+
+
+
 
 
 if __name__ == "__main__":
@@ -885,8 +980,9 @@ if __name__ == "__main__":
     # ils = IteratedLocalSearch()
     # best_sol, best_fit = ils.perform_ils(200, 100)
     # print("fitness after ils: ", best_fit)
-    greedy_new = GreedyMixedShelves()
-    greedy_new.apply_greedy_heuristic()
-    print("new heuristic: ", greedy_new.get_fitness_of_solution())
-    greedy_new.count_num_requested_items()
+    #greedy_new = GreedyMixedShelves()
+    #greedy_new.apply_greedy_heuristic()
+    sim = SimulatedAnnealingMixed()
+    sim.simulatedAnnealing()
+    print("new heuristic: ", sim.get_fitness_of_solution())
     print("")

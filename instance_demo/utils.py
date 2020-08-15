@@ -52,7 +52,6 @@ class BatchNew:
         self.orders = {}  # dictionary for all orders of a batch
         self.items = {}
         self.route = []
-        self.edges = []
         self.weight = 0
 
     def add_order(self, order: OrderOfBatch):
@@ -61,9 +60,46 @@ class BatchNew:
             self.items[item.ID] = item
         self.weight += order.weight
 
+    @property
+    def route(self):
+        return self._route
+
+    @route.setter
+    def route(self, val: list):
+        try:
+            edges = [val[0]]
+            for first, second in zip(val, val[1:]):
+                print(first, second)
+                if first == second:
+                    continue
+                else:
+                    edges.append(second)
+            self._route = edges
+        except IndexError:
+            self._route = val
+
+    def route_append(self, val):
+        self.route = self.route + [val]
+
+    def route_insert(self, position, val):
+        self.route = self.route[:position] + [val] + self.route[position:]
+
+    @property
+    def edges(self):
+        edges = []
+        route = self.route[:]
+        route.insert(0, self.pack_station)
+        route.append(self.pack_station)
+        for first, second in zip(route, route[1:]):
+            if first == second:
+                continue
+            else:
+                edges.append(Edge(first, second))
+        return edges
+
 
 class Solution:
-    pass
+    pass  # todo
 
 
 if __name__ == "__main__":
