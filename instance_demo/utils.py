@@ -1,5 +1,6 @@
 import xml.etree.cElementTree as ET
 from collections import defaultdict
+import re
 
 # container class for a batch
 class Batch:
@@ -20,21 +21,26 @@ class Edge:
 
 
 class ItemOfOrder:
-    def __init__(self, ID):
+    def __init__(self, ID, shelves):
         self.ID = ID
+        self.shelves = shelves
         self.shelf = None  # shelf where this item is going to be picked up
 
 
 class OrderOfBatch:
-    def __init__(self, ID, items):
+    def __init__(self, ID, items, weight, item_shelf_mapping):
         self.ID = ID
-        self.items = self.init_items(items)  # dictionary for all items of an order
+        self.weight = weight
+        self.item_counts = defaultdict(int)
+        self.items = self.init_items(items, item_shelf_mapping)  # dictionary for all items of an order
 
-    def init_items(self, items):
+    def init_items(self, items, item_shelf_mapping):
         item_dict = {}
         for item in items:
-            item = ItemOfOrder(item)
-            item_dict[item.ID] = item
+            shelves = list(item_shelf_mapping[item].keys())
+            item_of_order = ItemOfOrder(item + "_" + str(self.item_counts[item]), shelves)
+            self.item_counts[item] += 1
+            item_dict[item_of_order.ID] = item_of_order
         return item_dict
 
 
@@ -44,34 +50,16 @@ class BatchNew:
         self.cobot = cobot
         self.pack_station = pack_station
         self.orders = {}  # dictionary for all orders of a batch
-        self.items = []
+        self.items = {}
+        self.route = []
         self.edges = []
         self.weight = 0
 
     def add_order(self, order: OrderOfBatch):
         self.orders[order.ID] = order
-        self.items.extend(list(order.items.keys()))
-
-# Using @property decorator
-class Celsius:
-    def __init__(self, temperature=0):
-        self.temperature = temperature
-
-    def to_fahrenheit(self):
-        return (self.temperature * 1.8) + 32
-
-    @property
-    def temperature(self):
-        print("Getting value...")
-        return self._temperature
-
-    @temperature.setter
-    def temperature(self, value):
-        print("Setting value...")
-        if value < -273.15:
-            raise ValueError("Temperature below -273 is not possible")
-        self._temperature = value
-
+        for item in order.items.values():
+            self.items[item.ID] = item
+        self.weight += order.weight
 
 
 class Solution:

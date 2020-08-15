@@ -33,12 +33,12 @@ instances = {}
 instances[24, 2] = r'data/sku{}/layout_sku_{}_2.xml'.format(SKU, SKU)
 
 storagePolicies = {}
-# storagePolicies['dedicated'] = 'data/sku{}/pods_items_dedicated_1.txt'.format(SKU)
-storagePolicies['mixed'] = 'data/sku{}/pods_items_mixed_shevels_1-5.txt'.format(SKU)
+storagePolicies['dedicated'] = 'data/sku{}/pods_items_dedicated_1.txt'.format(SKU)
+# storagePolicies['mixed'] = 'data/sku{}/pods_items_mixed_shevels_1-5.txt'.format(SKU)
 
 orders = {}
 orders['10_5'] = r'data/sku{}/orders_10_mean_5_sku_{}.xml'.format(SKU, SKU)
-#orders['20_5'] = r'data/sku{}/orders_20_mean_5_sku_{}.xml'.format(SKU, SKU)
+# orders['20_5'] = r'data/sku{}/orders_20_mean_5_sku_{}.xml'.format(SKU, SKU)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -606,6 +606,7 @@ class GreedyMixedShelves(Demo):
         self.fill_item_id_pod_id_dict()
         self.fill_station_id_bot_id_dict()
         self.warehouseInstance.Orders = {str(key): value for key, value in enumerate(self.warehouseInstance.Orders)}
+        self.count = 0
 
     def fill_item_id_pod_id_dict(self):
         trie = self.build_trie_for_items()
@@ -616,11 +617,25 @@ class GreedyMixedShelves(Demo):
                 item_id = trie[product][color]
                 self.item_id_pod_id_dict[item_id][key] = int(item.Count)
 
+
+    def get_items_by_order(self, order_idx):
+        item_ids = []
+        for item_id, item in self.warehouseInstance.Orders[order_idx].Positions.items():
+            item_ids.extend([item_id] * int(item.Count))
+        return item_ids
+
     def get_items_plus_quant_by_order(self, order_idx) -> dict:
         item_ids = dict()
         for item_id, item in self.warehouseInstance.Orders[order_idx].Positions.items():
             item_ids[item_id] = item.Count
         return item_ids
+
+    def get_total_weight_by_order(self, order_idx):
+        weights = []
+        items_of_order = self.get_items_by_order(order_idx)
+        for item in items_of_order:
+            weights.append(self.get_weight_by_item(item))
+        return np.sum(weights)
 
     def get_station_with_min_total_distance(self, order_idx, retrieve_station_only=False):
         """
@@ -647,15 +662,6 @@ class GreedyMixedShelves(Demo):
                 item_dists.append(shelf_distances[shelf_with_min_dist])
             order_pack_dists[pack_station] = np.sum(item_dists)
         return min(order_pack_dists.keys(), key=(lambda k: order_pack_dists[k]))
-
-
-    def get_closest_shelf_for_item_from_node(self, curr_node, item):
-        shelves = list(self.item_id_pod_id_dict[item].keys())
-        distances_to_node = dict()
-        for shelf in shelves:
-            distances_to_node[shelf] = self.distance_ij[shelf, curr_node]
-        return min(distances_to_node.keys(), key=(lambda k: distances_to_node[k]))
-
 
     def assign_orders_to_stations(self):
         """
@@ -694,6 +700,93 @@ class GreedyMixedShelves(Demo):
 
         return min(sum_min_dist_to_item.keys(), key=(lambda k: sum_min_dist_to_item[k]))
 
+    def get_closest_shelf_for_item_from_node(self, curr_node, item):
+        shelves = list(self.item_id_pod_id_dict[item].keys())
+        distances_to_node = dict()
+        for shelf in shelves:
+            distances_to_node[shelf] = self.distance_ij[shelf, curr_node]
+        return min(distances_to_node.keys(), key=(lambda k: distances_to_node[k]))
+
+
+    def assign_shelves_to_items(self, curr_node, items_to_pick):
+        item_penalties = {}
+        item_shelves = {}
+        for item in items_to_pick:
+            penalty_vals = {}
+            max_kappa = max(int(self.item_id_pod_id_dict[item.ID.split("_")[0]][shelf]) for shelf in item.shelves)
+            for shelf in item.shelves:
+                dist = self.distance_ij[curr_node, shelf]
+                cappa = self.item_id_pod_id_dict[item.ID.split("_")[0]][shelf]
+                penalty_vals[shelf] = dist / (cappa / max_kappa)
+            min_shelf_for_item = min(penalty_vals.keys(), key=(lambda k: penalty_vals[k]))
+            penalty_for_item = penalty_vals[min_shelf_for_item]
+            item_penalties[item.ID] = penalty_for_item
+            item_shelves[item.ID] = min_shelf_for_item
+        min_item = min(item_penalties.keys(), key=(lambda k: item_penalties[k]))
+        min_shelf = item_shelves[min_item]
+
+        return min_item, min_shelf
+
+    def greedy_cobot_tour(self, batch: BatchNew):
+        """
+        implements nearest neighbor
+        :param batch:
+        :return:
+        """
+        try:
+            assert len(batch.route) == 0
+        except AssertionError:
+            batch.route = []
+        items = copy.deepcopy(batch.items)
+        curr_node = batch.pack_station
+        while items:
+            curr_item, curr_node = self.assign_shelves_to_items(curr_node, list(items.values()))
+            items.pop(curr_item)
+            batch.route.append(curr_node)
+            batch.items[curr_item].shelf = curr_node
+            self.item_id_pod_id_dict[curr_item.split("_")[0]][curr_node] -= 1
+            if self.item_id_pod_id_dict[curr_item.split("_")[0]][curr_node] == 0:
+                print("The shelf {} has no items of type {} left".format(curr_node, curr_item.split("_")[0]))
+                self.item_id_pod_id_dict[curr_item.split("_")[0]].pop(curr_node)
+
+    def greedy_cobot_tour(self, batch: BatchNew, items=None):
+        if not items:
+            items = copy.deepcopy(batch.items)
+        else:
+            items = copy.deepcopy(items)
+        if len(batch.route) == 0:
+            curr_item, curr_node = self.assign_shelves_to_items(batch.pack_station, list(items.values()))
+            batch.route.append(curr_node)
+            items.pop(curr_item)
+            batch.items[curr_item].shelf = curr_node
+            self.item_id_pod_id_dict[curr_item.split("_")[0]][curr_node] -= 1
+
+        for item in items.values():
+            curr_distance = self.get_fitness_of_batch(batch)
+            batch_copy = copy.deepcopy(batch)
+            add_distances = {}
+            min_position_shelf = {}
+            for i in range(len(batch.route)+1):
+                shelf_add_distances = {}
+                for shelf in item.shelves:
+                    if self.item_id_pod_id_dict[item.ID.split("_")[0]][shelf] > 0:
+                        route = copy.deepcopy(batch_copy.route)
+                        route.insert(i, shelf)
+                        shelf_add_distances[shelf] = self.get_fitness_of_tour(route, batch_copy.pack_station) - curr_distance
+                min_shelf = min(shelf_add_distances.keys(), key=(lambda k: shelf_add_distances[k]))
+                add_distances[i] = shelf_add_distances[min_shelf]
+                min_position_shelf[i] = min_shelf
+            min_position = min(add_distances.keys(), key=(lambda k: add_distances[k]))
+            item.shelf = min_position_shelf[min_position]
+            node = min_position_shelf[min_position]
+            item = item.ID
+            batch.route.insert(min_position, node)
+            batch.items[item].shelf = node
+            self.item_id_pod_id_dict[item.split("_")[0]][node] -= 1
+            self.count += 1
+
+
+
     def assign_orders_to_batches_greedy(self, pack_station):
         orders_of_station = self.assign_orders_to_stations()[pack_station]
         already_assigned = list()
@@ -704,13 +797,12 @@ class GreedyMixedShelves(Demo):
             # initialize the batch with a random order
             init_order = np.random.choice(np.setdiff1d(orders_of_station, already_assigned))
             items_of_order = self.get_items_by_order(init_order)
-            init_order = OrderOfBatch(init_order, items_of_order)
+            weight_of_order = self.get_total_weight_by_order(init_order)
+            init_order = OrderOfBatch(init_order, items_of_order, weight_of_order, self.item_id_pod_id_dict)
             batch.add_order(init_order)
-
+            self.greedy_cobot_tour(batch)
 
             already_assigned.append(init_order.ID)
-
-            batch.weight += self.get_total_weight_by_order(init_order.ID)
 
             forbidden_for_batch = []
             while batch.weight < self.batch_weight and not len(
@@ -722,9 +814,11 @@ class GreedyMixedShelves(Demo):
                 if (batch.weight + weight_of_order) <= self.batch_weight:
                     print("and it also fits in the current batch ({})".format(batch_id))
                     already_assigned.append(new_order)
-                    batch.orders.append(new_order)
-                    batch.items.extend(self.get_items_by_order(new_order))
-                    batch.weight += weight_of_order
+                    items_of_order = self.get_items_by_order(new_order)
+                    weight_of_order = self.get_total_weight_by_order(new_order)
+                    new_order = OrderOfBatch(new_order, items_of_order, weight_of_order, self.item_id_pod_id_dict)
+                    batch.add_order(new_order)
+                    self.greedy_cobot_tour(batch, items=new_order.items)
                 else:
                     print("but it would add too much weight to the batch, go on to next...")
                     forbidden_for_batch.append(new_order)
@@ -732,11 +826,67 @@ class GreedyMixedShelves(Demo):
             self.batches[batch_id] = batch
             self.batch_count += 1
 
+    def apply_greedy_heuristic(self):
+        self.item_id_pod_id_dict_copy = copy.deepcopy(self.item_id_pod_id_dict)
+        if self.batches:
+            self.batches = dict()
+        for pack_station in self.warehouseInstance.OutputStations.keys():
+            self.assign_orders_to_batches_greedy(pack_station)
+
+    def get_fitness_of_batch(self, batch: BatchNew):
+        distances = []
+        distances.append(self.distance_ij[batch.pack_station, batch.route[0]])
+        for first, second in zip(batch.route, batch.route[1:]):
+            distances.append(self.distance_ij[first,second])
+        distances.append(self.distance_ij[batch.pack_station, batch.route[-1]])
+        return np.sum(distances)
+
+    def get_fitness_of_tour(self, batch_route, pack_station):
+        distances = []
+        distances.append(self.distance_ij[pack_station, batch_route[0]])
+        for first, second in zip(batch_route, batch_route[1:]):
+            distances.append(self.distance_ij[first, second])
+        distances.append(self.distance_ij[pack_station, batch_route[-1]])
+        return np.sum(distances)
+
+    def get_fitness_of_solution(self):
+        distances = []
+        for batch in self.batches.values():
+            distances.append(self.get_fitness_of_batch(batch))
+        return np.sum(distances)
+
+    def count_num_items_taken(self):
+        shelves_taken = self.item_id_pod_id_dict
+        shelves_orig = self.item_id_pod_id_dict_copy
+        total_taken = []
+        for key1, shelf in shelves_orig.items():
+            for key2, item_count in shelf.items():
+                new = shelves_taken[key1][key2]
+                orig = item_count
+                taken = orig-new
+                total_taken.append(taken)
+        return sum(total_taken)
+
+    def count_num_requested_items(self):
+        req = []
+        for order_key, order in self.warehouseInstance.Orders.items():
+            items = self.get_items_by_order(order_key)
+            req.append(len(items))
+        req = sum(req)
+        taken = self.count_num_items_taken()
+        assert taken==req
+
+
 if __name__ == "__main__":
     np.random.seed(523168)
+    greedy = GreedyHeuristic()
+    greedy.apply_greedy_heuristic()
+    print("old heuristic: ", greedy.get_fitness_of_solution())
     # ils = IteratedLocalSearch()
     # best_sol, best_fit = ils.perform_ils(200, 100)
     # print("fitness after ils: ", best_fit)
-    greedy = GreedyMixedShelves()
-    greedy.assign_orders_to_batches_greedy("OutD0")
+    greedy_new = GreedyMixedShelves()
+    greedy_new.apply_greedy_heuristic()
+    print("new heuristic: ", greedy_new.get_fitness_of_solution())
+    greedy_new.count_num_requested_items()
     print("")
