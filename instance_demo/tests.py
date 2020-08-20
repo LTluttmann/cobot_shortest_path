@@ -1,7 +1,7 @@
-from instance_demo import GreedyMixedShelves
+from instance_demo import GreedyMixedShelves, VariableNeighborhoodSearch
+import numpy as np
 
-
-class SolutionTester(GreedyMixedShelves):
+class SolutionTester(VariableNeighborhoodSearch):
 
     def __init__(self):
         super(SolutionTester, self).__init__()
@@ -31,8 +31,19 @@ class SolutionTester(GreedyMixedShelves):
         taken = self.count_num_items_taken()
         assert taken == req
 
+    def weight_test(self):
+        total_weight_of_orders = np.sum([self.get_total_weight_by_order('{}'.format(i))
+                                         for i in range(len(self.warehouseInstance.Orders.keys()))])
+        total_weight_of_batches = np.sum([batch.weight for batch in self.batches.values()])
+        assert total_weight_of_orders == total_weight_of_batches
+
+    def capacity_test(self):
+        assert all([batch.weight <= self.batch_weight for batch in self.batches.values()])
+
 
 if __name__ == "__main__":
     st = SolutionTester()
-    st.apply_greedy_heuristic()
+    st.reduced_vns(130, 50, 3)
     st.count_num_requested_items()
+    st.weight_test()
+    st.capacity_test()

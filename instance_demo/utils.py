@@ -21,8 +21,9 @@ class Edge:
 
 
 class ItemOfOrder:
-    def __init__(self, ID, shelves):
+    def __init__(self, ID, orig_ID, shelves):
         self.ID = ID
+        self.orig_ID = orig_ID
         self.shelves = shelves
         self.shelf = None  # shelf where this item is going to be picked up
 
@@ -38,7 +39,7 @@ class OrderOfBatch:
         item_dict = {}
         for item in items:
             shelves = list(item_shelf_mapping[item].keys())
-            item_of_order = ItemOfOrder(item + "_" + str(self.item_counts[item]), shelves)
+            item_of_order = ItemOfOrder(self.ID + "_" + item + "_" + str(self.item_counts[item]), item, shelves)
             self.item_counts[item] += 1
             item_dict[item_of_order.ID] = item_of_order
         return item_dict
@@ -53,12 +54,25 @@ class BatchNew:
         self.items = {}
         self.route = []
         self.weight = 0
+        self.item_counts = defaultdict(int)
 
     def add_order(self, order: OrderOfBatch):
         self.orders[order.ID] = order
         for item in order.items.values():
             self.items[item.ID] = item
+            self.item_counts[item.orig_ID] += order.item_counts[item.orig_ID]
+            #item.ID = item.orig_ID + "_" + str(self.item_counts[item.orig_ID])
         self.weight += order.weight
+
+    @property
+    def pack_station(self):
+        return self._pack_station
+
+    @pack_station.setter
+    def pack_station(self, val):
+        counter = self.ID.split("_")[-1]
+        self.ID = val + "_" + counter
+        self._pack_station = val
 
     @property
     def route(self):
@@ -69,7 +83,6 @@ class BatchNew:
         try:
             edges = [val[0]]
             for first, second in zip(val, val[1:]):
-                print(first, second)
                 if first == second:
                     continue
                 else:
