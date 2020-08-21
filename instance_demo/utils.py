@@ -54,14 +54,18 @@ class BatchNew:
         self.items = {}
         self.route = []
         self.weight = 0
-        self.item_counts = defaultdict(int)
+
+    @property
+    def items_of_shelves(self):
+        items_of_shelves = defaultdict(list)
+        for item in self.items.values():
+            items_of_shelves[item.shelf].append(item)
+        return items_of_shelves
 
     def add_order(self, order: OrderOfBatch):
         self.orders[order.ID] = order
         for item in order.items.values():
             self.items[item.ID] = item
-            self.item_counts[item.orig_ID] += order.item_counts[item.orig_ID]
-            #item.ID = item.orig_ID + "_" + str(self.item_counts[item.orig_ID])
         self.weight += order.weight
 
     @property
@@ -91,11 +95,9 @@ class BatchNew:
         except IndexError:
             self._route = val
 
-    def route_append(self, val):
-        self.route = self.route + [val]
-
-    def route_insert(self, position, val):
+    def route_insert(self, position, val, item):
         self.route = self.route[:position] + [val] + self.route[position:]
+        self.items[item.ID].shelf = val
 
     @property
     def edges(self):
