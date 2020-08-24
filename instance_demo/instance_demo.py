@@ -32,7 +32,7 @@ instances = {}
 instances[24, 2] = r'data/sku{}/layout_sku_{}_2.xml'.format(SKU, SKU)
 
 storagePolicies = {}
-# storagePolicies['dedicated'] = 'data/sku{}/pods_items_dedicated_1.txt'.format(SKU)
+#storagePolicies['dedicated'] = 'data/sku{}/pods_items_dedicated_1.txt'.format(SKU)
 storagePolicies['mixed'] = 'data/sku{}/pods_items_mixed_shevels_1-5.txt'.format(SKU)
 
 orders = {}
@@ -490,23 +490,24 @@ class SimulatedAnnealing(GreedyHeuristic):
         # Accept the new tour for all cases where fitness of candidate < fitness current
         print("Starting simulated annealing with current fitness: ", currentFitness)
         if batch_id:
-            currentSolution =  {batch_id: currentSolution[batch_id]}
+            currentSolution = {batch_id: currentSolution[batch_id]}
         for batch_id, batch in currentSolution.items():
             alpha = 0.975
             T = 4
             iteration = 1
             maxIteration = 1000
             minTemperature = 0.1
-            if np.random.random() >= 0.8:
-                candidate_ps = self.switch_stations(batch_id)
-                print("New pack station for batch {}: ".format(batch_id), candidate_ps)
-                batch.pack_station = candidate_ps
-                self.greedy_cobot_tour(batch)
-            else:
-                candidate_ps = batch.pack_station
 
             while T >= minTemperature and iteration < maxIteration:
-                if len(batch.route) > 1:
+                batch_copy = copy.deepcopy(batch)
+                if np.random.random() >= 0.8:
+                    candidate_ps = self.switch_stations(batch_id)
+                    print("New pack station for batch {}: ".format(batch_id), candidate_ps)
+                    batch.pack_station = candidate_ps
+                    # self.greedy_cobot_tour(batch)
+                else:
+                    candidate_ps = batch.pack_station
+                if len(batch_copy.route) > 1:
                     pointCopy = batch.route[:]
                     candidate = self.two_opt(pointCopy)
                     if self.accept(batch, candidate, T, candidate_ps):
@@ -804,63 +805,16 @@ class GreedyMixedShelves(Demo):
         for item in items.values():
             batch_copy = copy.deepcopy(batch)
             shelf_add_distances = {}
-            blacklisted = []
             for shelf in item.shelves:
-                if self.item_id_pod_id_dict[item.orig_ID][shelf] == 0:
-                    blacklisted.append(shelf)
-                added_dists = {i: self.calc_increase_dist(batch_copy.route, shelf, i, batch_copy.pack_station)
-                               for i in range(len(batch.route) + 1)}
-                min_pos, min_pos_dist = min(added_dists.items(), key=itemgetter(1))
-                shelf_add_distances[shelf, min_pos] = min_pos_dist
-               # else:
-                   # print("Shelf {} has not more units of item {}.".format(shelf, item.orig_ID))
-            # min_shelf, min_pos = min(shelf_add_distances, key=shelf_add_distances.get)
-            while True:
-                min_shelf, min_pos = min(shelf_add_distances, key=shelf_add_distances.get)
-                if min_shelf in blacklisted:
-                    shelf_add_distances.pop((min_shelf,min_pos))
-                    self.could_not_assign[item.ID].append(min_shelf)
+                if self.item_id_pod_id_dict[item.orig_ID][shelf] > 0:
+                    added_dists = {i: self.calc_increase_dist(batch_copy.route, shelf, i, batch_copy.pack_station)
+                                   for i in range(len(batch.route) + 1)}
+                    min_pos, min_pos_dist = min(added_dists.items(), key=itemgetter(1))
+                    shelf_add_distances[shelf, min_pos] = min_pos_dist
                 else:
-                    break
-            batch.route_insert(min_pos, min_shelf, item)
-            batch.items[item.ID].shelf = min_shelf
-            self.item_id_pod_id_dict[item.orig_ID][min_shelf] -= 1
+                    print("Shelf {} has not more units of item {}.".format(shelf, item.orig_ID))
+            min_shelf, min_pos = min(shelf_add_distances, key=shelf_add_distances.get)
 
-    def greedy_cobot_tour(self, batch: BatchNew, items=None):
-        """
-        function to determine a (initial) route in a greedy manner
-        :param batch:
-        :param items:
-        :return:
-        """
-        if not items:
-            items = copy.deepcopy(batch.items)
-            batch.route = []  # if all items of a batch shell be scheduled, the current tour needs to be discarded
-            self.replenish_shelves(batch)  # replenish shelves
-        else:
-            items = copy.deepcopy(items)
-
-        for item in items.values():
-            batch_copy = copy.deepcopy(batch)
-            shelf_add_distances = {}
-            blacklisted = []
-            for shelf in item.shelves:
-                if self.item_id_pod_id_dict[item.orig_ID][shelf] == 0:
-                    blacklisted.append(shelf)
-                added_dists = {i: self.calc_increase_dist(batch_copy.route, shelf, i, batch_copy.pack_station)
-                               for i in range(len(batch.route) + 1)}
-                min_pos, min_pos_dist = min(added_dists.items(), key=itemgetter(1))
-                shelf_add_distances[shelf, min_pos] = min_pos_dist
-               # else:
-                   # print("Shelf {} has not more units of item {}.".format(shelf, item.orig_ID))
-            # min_shelf, min_pos = min(shelf_add_distances, key=shelf_add_distances.get)
-            while True:
-                min_shelf, min_pos = min(shelf_add_distances, key=shelf_add_distances.get)
-                if min_shelf in blacklisted:
-                    shelf_add_distances.pop((min_shelf,min_pos))
-                    self.could_not_assign[item.ID].append(min_shelf)
-                else:
-                    break
             batch.route_insert(min_pos, min_shelf, item)
             batch.items[item.ID].shelf = min_shelf
             self.item_id_pod_id_dict[item.orig_ID][min_shelf] -= 1
@@ -951,11 +905,9 @@ class SimulatedAnnealingMixed(GreedyMixedShelves):
     def __init__(self):
         super(SimulatedAnnealingMixed, self).__init__()
 
-    def accept(self, current_route, candidate_route, T, pack_station=None):
-        # current_route = batch.route
-        # pack_station = batch.pack_station if not pack_station else pack_station
-        currentFitness = self.get_fitness_of_tour(current_route, pack_station)
-        candidateFitness = self.get_fitness_of_tour(candidate_route, pack_station)
+    def accept(self, curr_batch: BatchNew, candidate_batch: BatchNew, T):
+        currentFitness = self.get_fitness_of_tour(curr_batch.route, curr_batch.pack_station)
+        candidateFitness = self.get_fitness_of_tour(candidate_batch.route, candidate_batch.pack_station)
         # print("currentfit:",currentFitness)
         # print("candidatefit:",candidateFitness)
         if candidateFitness < currentFitness:
@@ -968,27 +920,38 @@ class SimulatedAnnealingMixed(GreedyMixedShelves):
         # Accept the new tour for all cases where fitness of candidate => fitness current with a probability
         return math.exp(-abs(candidateFitness - currentFitness) / T)
 
-    def two_opt(self, tour):
-        length = range(len(tour))
-        i, j = np.random.choice(length, 2)
-        tour = tour[:]
-        tour[i], tour[j] = tour[j], tour[i]
-        reverse_order = [tour[m] for m in reversed(range(i + 1, j))]
-        tour[i + 1: j] = reverse_order
+    def two_opt(self, batch: BatchNew, T):
+        for i in range(len(batch.route) - 2):
+            for j in range(i + 2, len(batch.route)):
+                curr_tour = batch.route[:]
+                curr_tour.insert(0, batch.pack_station)
+                new_tour = []
+                new_tour.extend(curr_tour[:i+1])
+                new_tour.append(curr_tour[j])
+                new_tour.extend([curr_tour[m] for m in reversed(range(i + 1, j))])
+                new_tour.extend(curr_tour[j+1:])
+                new_tour.remove(batch.pack_station)
+                batch.route = new_tour
+                if self.accept(curr_batch=self.batches[batch.ID], candidate_batch=batch, T=T):
+                    self.batches[batch.ID] = batch
+                    self.batches = {value.ID: value for value in self.batches.values()} # update keys in accordence to possible new batch ids
+                    return True
+                else:
+                    curr_tour.remove(batch.pack_station)
+                    batch.route = curr_tour
+                    continue
+        return False
 
-        return tour
-
-    def switch_stations(self, batch_id):
+    def switch_stations(self, batch: BatchNew):
         """
         TODO: vary the pack station of batches
         :return:
         """
-        curr_ps = self.batches[batch_id].pack_station
+        curr_ps = batch.pack_station
         new_ps = np.random.choice(np.setdiff1d(list(self.warehouseInstance.OutputStations.keys()), curr_ps))
         return new_ps
 
     def change_shelf_assignment(self, batch: BatchNew, route=None):
-        curr_fitness = self.get_fitness_of_batch(batch)
         batch_copy = copy.deepcopy(batch)
         if route:
             batch_copy.route = route
@@ -999,99 +962,68 @@ class SimulatedAnnealingMixed(GreedyMixedShelves):
             batch_copy.route.remove(shelf_to_destroy)
             batch_copy.items_of_shelves.pop(shelf_to_destroy)
             shelf_add_distances = {}
-            blacklisted = []
             for shelf in np.setdiff1d(item_of_shelf.shelves, shelf_to_destroy):
-                if self.item_id_pod_id_dict[item_of_shelf.orig_ID][shelf] == 0:
-                    blacklisted.append(shelf)
-                added_dists = {i: self.calc_increase_dist(batch_copy.route, shelf, i, batch_copy.pack_station)
-                               for i in range(len(batch_copy.route) + 1)}
-                min_pos, min_pos_dist = min(added_dists.items(), key=itemgetter(1))
-                shelf_add_distances[shelf, min_pos] = min_pos_dist
+                if self.item_id_pod_id_dict[item_of_shelf.orig_ID][shelf] > 0:
+                    added_dists = {i: self.calc_increase_dist(batch_copy.route, shelf, i, batch_copy.pack_station)
+                                   for i in range(len(batch_copy.route) + 1)}
+                    min_pos, min_pos_dist = min(added_dists.items(), key=itemgetter(1))
+                    shelf_add_distances[shelf, min_pos] = min_pos_dist
 
-            # min_shelf, min_pos = min(shelf_add_distances, key=shelf_add_distances.get)
-            while True:
-                min_shelf, min_pos = min(shelf_add_distances, key=shelf_add_distances.get)
-                if min_shelf in blacklisted:
-                    shelf_add_distances.pop(min_shelf)
-                    self.could_not_assign[item_of_shelf].append(min_shelf)
-                else:
-                    break
-            # item.shelf = min_shelf
+            min_shelf, min_pos = min(shelf_add_distances, key=shelf_add_distances.get)
             batch_copy.route_insert(min_pos, min_shelf, item_of_shelf)
             batch_copy.items[item_of_shelf.ID].shelf = min_shelf
-            cand_fit = self.get_fitness_of_batch(batch_copy)
-            #if cand_fit < curr_fitness:
-            #    self.batches[batch.ID] = batch_copy
-            #    self.item_id_pod_id_dict[item_of_shelf.orig_ID][shelf_to_destroy] += 1
-            #    self.item_id_pod_id_dict[item_of_shelf.orig_ID][min_shelf] -= 1
+
             return batch_copy, item_of_shelf, shelf_to_destroy, min_shelf
         else:
             return batch_copy, None, None, None
 
-
-
-
-    def simulatedAnnealing(self, alpha=0.975, T=4, maxIteration=1000, minTemperature=0.1, k=1, batch_id=None):
+    def perform_sim_annealing(self):
         # Simulated Annealing Parameters
         if not self.batches:
             # Run the greedy heuristic and get the current solution with the current fitness value
             self.apply_greedy_heuristic()
             self.greedyFitness = self.get_fitness_of_solution()
             print("Fitness of greedy solution: ", self.greedyFitness)
-            currentSolution, currentFitness = copy.deepcopy(self.batches), self.greedyFitness
-        else:
-            currentSolution, currentFitness = copy.deepcopy(self.batches), self.get_fitness_of_solution()
 
-        # if we have only changed one batch, then the optimization of the route is only performed for that
-        # particular batch
-        if batch_id:
-            currentSolution = {batch_id: currentSolution[batch_id]}
-        print("Starting simulated annealing with current fitness: ", currentFitness)
-        for batch_id, batch in currentSolution.items():
-            iteration = 1
-            if np.random.random() >= 0.8:
-                candidate_ps = self.switch_stations(batch_id)
-                print("New pack station for batch {}: ".format(batch_id), candidate_ps)
-                batch.pack_station = candidate_ps
-                self.greedy_cobot_tour(batch)  # recalculate the greedy tour with new pack station
-            else:
-                candidate_ps = batch.pack_station
-
-            while T >= minTemperature and iteration < maxIteration:
-                if len(batch.route) > 1:
-                    curr_route = batch.route[:]
-                    #candidate = self.two_opt(pointCopy)
-                    batch.route = self.two_opt(batch.route)
-                    if k == 2:
-                        batch, item, old_shelf, new_shelf = self.change_shelf_assignment(batch)
-                    else:
-                        item = None
-                    if self.accept(curr_route, batch.route, T, candidate_ps):
-                        currentSolution[batch_id] = batch
-                        if item:
-                            self.item_id_pod_id_dict[item.orig_ID][old_shelf] += 1
-                            self.item_id_pod_id_dict[item.orig_ID][old_shelf] -= 1
-                T *= alpha
-                iteration += 1
-            self.batches[batch_id] = currentSolution[batch_id]
-            self.batches = {value.ID: value for value in self.batches.values()}  # update keys in accordence to possible new batch ids
+        print("Starting simulated annealing with current fitness: ", self.get_fitness_of_solution())
+        for batch in self.batches.values():
+            self.simulatedAnnealing(batch)
         print("Fitness of Simulated Annealing: ", self.get_fitness_of_solution())
 
+
+    def simulatedAnnealing(self, batch: BatchNew, alpha=0.975, maxIteration=1000, minTemperature=0.1, mutation_prob=0.2,
+                           max_it_without_change=25):
+        iteration = 0
+        it_without_change = 0
+        T = max(self.distance_ij.values()) - min(list(self.distance_ij.values()))
+        while T >= minTemperature and iteration < maxIteration and it_without_change < max_it_without_change:
+            batch_copy = copy.deepcopy(batch)
+            if np.random.random() <= mutation_prob:
+                batch_copy.pack_station = self.switch_stations(batch_copy)
+                print("New pack station for batch {}: ".format(batch_copy.ID), batch_copy.pack_station)
+                self.greedy_cobot_tour(batch_copy)  # recalculate the greedy tour with new pack station
+            made_change = self.two_opt(batch_copy, T)
+            it_without_change += 1 if not made_change else 0
+            T *= alpha
+            iteration += 1
 
 
 class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
     def __init__(self):
         super(IteratedLocalSearchMixed, self).__init__()
-        self.simulatedAnnealing()  # get initial solution
+        self.perform_sim_annealing()  # get initial solution
 
-    def perturbation(self):
+    def perturbation(self, history=None):
         print("Performing perturbation")
         weight_dict = self.get_weight_per_batch()
         probabilities = []
         keys = []
         for key, weight in weight_dict.items():
-            probabilities.append(1-weight/self.batch_weight)
-            keys.append(key)
+            if key == history:
+                continue
+            else:
+                probabilities.append(1-weight/self.batch_weight)
+                keys.append(key)
         probabilities = [float(i) / sum(probabilities) for i in probabilities]
         destroy_batch = np.random.choice(keys, p=probabilities)
         # destroy_batch = np.random.choice(keys)
@@ -1112,6 +1044,7 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                 self.batches[batch_id] = BatchNew(batch_id, pack_station, self.station_id_bot_id_dict[pack_station])
                 self.update_batches_from_new_order(order, batch_id)
                 self.batch_count += 1
+                history = batch_id
             else:
                 # choose the batch with maximum workload after assignment
                 new_batch_of_order = max(candidate_batches.keys(), key=(lambda k: candidate_batches[k]))
@@ -1119,6 +1052,65 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
             # update weight_dict
             weight_dict = self.get_weight_per_batch()
         print("fitness after perturbation: ", self.get_fitness_of_solution())
+        return history
+
+    def local_search(self, max_iters=10):
+        """
+        perform simple swap of orders to batches
+        :return:
+        """
+        weight_dict = self.get_weight_per_batch()
+        iters = 0
+        while iters < max_iters:
+            i, j = np.random.choice(list(weight_dict.keys()), 2, replace=False)
+            order_i, order_j = self.determine_switchable_orders(i, j)
+            if not order_i:
+                iters += 1
+                continue
+            else:
+                batches_copy = copy.deepcopy(self.batches)
+                batches_copy[i].del_order(self.batches[i].orders[order_i])
+                batches_copy.add_order(self.batches[j].orders[order_j])
+                self.greedy_cobot_tour(batches_copy[i])
+                self.simulatedAnnealing(batch_id=i, mutation_prob=0.05)
+
+                self.batches[j].del_order(self.batches[i].orders[order_i])
+                self.batches[j].add_order(self.batches[i].orders[order_i])
+                self.greedy_cobot_tour(self.batches[j])
+                self.simulatedAnnealing(batch_id=j, mutation_prob=0.05)
+                iters += 1
+
+    def determine_switchable_orders(self, i, j):
+
+        order_dict_i = {}
+        for order_id, order in self.batches[i].orders.items():
+            order_dict_i[order_id] = order.weight
+        order_df_i = pd.DataFrame.from_dict(order_dict_i, orient="index", columns=[i]).assign(merge_key=1).reset_index()
+        order_df_i.columns = ["order_id_i", "weight_i", "merge_key"]
+
+        order_dict_j = {}
+        for order_id, order in self.batches[j].orders.items():
+            order_dict_j[order_id] = order.weight
+        order_df_j = pd.DataFrame.from_dict(order_dict_j, orient="index", columns=[j]).assign(merge_key=1).reset_index()
+        order_df_j.columns = ["order_id_j", "weight_j", "merge_key"]
+
+        order_df = order_df_i.merge(order_df_j, on="merge_key")
+        order_df.drop("merge_key", axis=1, inplace=True)
+        order_df = order_df.assign(kappa_left_i=self.batch_weight-self.batches[i].weight)
+        order_df = order_df.assign(kappa_left_j=self.batch_weight - self.batches[j].weight)
+        order_df["diff"] = order_df["weight_i"] - order_df["weight_j"]
+        order_df = order_df.sample(frac=1)  # random permutation for further randomization of local search
+        for idx, row in order_df.iterrows():
+            if row["diff"] < 0:  # order of batch j is larger, does it fit into i?
+                if abs(row["diff"]) < row["kappa_left_i"]:
+                    switch_order = (row["order_id_i"], row["order_id_j"])
+                    return switch_order
+            elif row["diff"] > 0:  # order of batch i is larger, does it fit into j?
+                if row["diff"] < row["kappa_left_j"]:
+                    switch_order = (row["order_id_i"], row["order_id_j"])
+                    return switch_order
+        return None, None
+
 
     def update_batches_from_new_order(self, new_order, batch_id):
         update_batch = self.batches[batch_id]
@@ -1128,7 +1120,7 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         update_batch.add_order(new_order)
         self.greedy_cobot_tour(update_batch, new_order.items)
         print("partial solution before sim ann (update step): ", self.get_fitness_of_solution())
-        self.simulatedAnnealing(batch_id=batch_id)
+        self.simulatedAnnealing(batch_id=batch_id, mutation_prob=0.05)
 
     def perform_ils(self, num_iters, threshold):
         iter = 0
@@ -1137,9 +1129,10 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         best_fit = curr_fit
         curr_sol = copy.deepcopy(self.batches)
         best_sol = copy.deepcopy(curr_sol)
+        history = None
         while iter < num_iters:
             iter += 1
-            self.perturbation()
+            history = self.perturbation(history)
             neighbor_fit = self.get_fitness_of_solution()
             if neighbor_fit < curr_fit:
                 curr_fit = neighbor_fit  # accept new solution
@@ -1176,10 +1169,6 @@ class VariableNeighborhoodSearch(IteratedLocalSearchMixed):
             keys.append(key)
         probabilities = [float(i) / sum(probabilities) for i in probabilities]
         destroy_batches = np.random.choice(keys, k, replace=False, p=probabilities)  # destroy k batches
-
-        if k==4:
-            self.simulatedAnnealing(batch_id=np.random.choice(np.setdiff1d(list(weight_dict.keys()), destroy_batches)), k=2)
-
         [weight_dict.pop(destroy_batch) for destroy_batch in destroy_batches]
         # merge dictionaries of orders of the batches that should be destroyed
         orders = eval("{"+",".join(["**self.batches[destroy_batches[{}]].orders".format(i) for i in range(len(destroy_batches))])+"}")
@@ -1232,23 +1221,22 @@ class VariableNeighborhoodSearch(IteratedLocalSearchMixed):
                     k += 1
             iters += 1
             t = time.time() - starttime
-        return best_sol
+        self.batches = best_sol
 
 
 
 if __name__ == "__main__":
-    np.random.seed(52331681)
+    np.random.seed(523381)
     # _demo = Demo()
     # if _demo.is_storage_dedicated:
     #     greedy = GreedyHeuristic()
     #     greedy.apply_greedy_heuristic()
     #     print("old heuristic: ", greedy.get_fitness_of_solution())
-    #ils = IteratedLocalSearchMixed()
-    #ils.perform_ils(1, 30)
-    ils = VariableNeighborhoodSearch()
-    # for i in range(1000):
-    #     rd_btch = np.random.choice(list(ils.batches.keys()))
-    #     ils.change_shelf_assignment(ils.batches[rd_btch])
-    ils.reduced_vns(15, 50, 3)
+    ils = IteratedLocalSearchMixed()
+    ils.local_search()
+    #ils = VariableNeighborhoodSearch()
+    #ils.reduced_vns(50, 50, 3)
 
+    #ils = SimulatedAnnealingMixed()
+    #ils.simulatedAnnealing()
     print("new heuristic: ", ils.get_fitness_of_solution())

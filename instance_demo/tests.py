@@ -1,7 +1,7 @@
-from instance_demo import GreedyMixedShelves, VariableNeighborhoodSearch
+from instance_demo import GreedyMixedShelves, SimulatedAnnealingMixed, VariableNeighborhoodSearch
 import numpy as np
 
-class SolutionTester(VariableNeighborhoodSearch):
+class SolutionTester(SimulatedAnnealingMixed):
 
     def __init__(self):
         super(SolutionTester, self).__init__()
@@ -43,7 +43,8 @@ class SolutionTester(VariableNeighborhoodSearch):
 
 if __name__ == "__main__":
     st = SolutionTester()
-    st.reduced_vns(130, 50, 3)
+    # st.reduced_vns(130, 50, 3)
+    st.simulatedAnnealing()
     st.count_num_requested_items()
     st.weight_test()
     st.capacity_test()

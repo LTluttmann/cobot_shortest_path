@@ -68,6 +68,12 @@ class BatchNew:
             self.items[item.ID] = item
         self.weight += order.weight
 
+    def del_order(self, order: OrderOfBatch):
+        self.orders.pop(order.ID)
+        for item in order.items.values():
+            self.items.pop(item.ID)
+        self.weight -= order.weight
+
     @property
     def pack_station(self):
         return self._pack_station
