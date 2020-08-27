@@ -1,3 +1,8 @@
+"""
+This script
+"""
+
+
 # example to use
 import numpy as np
 import xml.etree.cElementTree as ET
@@ -21,10 +26,9 @@ from collections import defaultdict, Iterable
 from utils import *
 import copy
 import random
-from instance_demo import Demo
 
 # ------------------------------------------- CONFIG -------------------------------------------------------------------
-SKU = "24"  # options: 24 and 360
+SKU = "360"  # options: 24 and 360
 
 layoutFile = r'data/layout/1-1-1-2-1.xlayo'
 podInfoFile = 'data/sku{}/pods_infos.txt'.format(SKU)
@@ -33,28 +37,148 @@ instances = {}
 instances[24, 2] = r'data/sku{}/layout_sku_{}_2.xml'.format(SKU, SKU)
 
 storagePolicies = {}
-#storagePolicies['dedicated'] = 'data/sku{}/pods_items_dedicated_1.txt'.format(SKU)
-storagePolicies['mixed'] = 'data/sku{}/pods_items_mixed_shevels_1-5.txt'.format(SKU)
+storagePolicies['dedicated'] = 'data/sku{}/pods_items_dedicated_1.txt'.format(SKU)
+#storagePolicies['mixed'] = 'data/sku{}/pods_items_mixed_shevels_1-5.txt'.format(SKU)
 
 orders = {}
-# orders['10_5'] = r'data/sku{}/orders_10_mean_5_sku_{}.xml'.format(SKU, SKU)
-orders['20_5'] = r'data/sku{}/orders_20_mean_5_sku_{}.xml'.format(SKU, SKU)
+orders['10_5'] = r'data/sku{}/orders_10_mean_5_sku_{}.xml'.format(SKU, SKU)
+#orders['10_5'] = r'data/sku{}/orders_10_mean_1x6_sku_{}.xml'.format(SKU, SKU)
+# orders['20_5'] = r'data/sku{}/orders_20_mean_5_sku_{}.xml'.format(SKU, SKU)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
 
-class GreedyMixedShelves(Demo):
-    def __init__(self):
-        super(GreedyMixedShelves, self).__init__()
-        self.item_id_pod_id_dict = defaultdict(dict)
-        self.solution = None
-        self.orders_of_batches = dict()
-        self.batches = dict()
-        self.batch_count = 0
-        self.fill_item_id_pod_id_dict()
-        self.fill_station_id_bot_id_dict()
-        self.warehouseInstance.Orders = {str(key): value for key, value in enumerate(self.warehouseInstance.Orders)}
-        self.could_not_assign = defaultdict(list)
+class WarehouseDateProcessing():
+    def __init__(self, warehouseInstance, batch_size=None):
+        self.Warehouse = warehouseInstance
+        self._InitSets(warehouseInstance, batch_size)
+
+    def preprocessingFilterPods(self, warehouseInstance):
+        resize_pods = {}
+        print("preprocessingFilterPods")
+        item_id_list = []
+        for order in warehouseInstance.Orders:
+            for pos in order.Positions.values():
+                item = warehouseInstance.ItemDescriptions[pos.ItemDescID].Color.lower() + '/' + \
+                       warehouseInstance.ItemDescriptions[pos.ItemDescID].Letter
+                # item_id = pos.ItemDescID
+                if item not in item_id_list:
+                    item_id_list.append(item)
+
+        # for dedicated
+        for pod in warehouseInstance.Pods.values():
+            for item in pod.Items:
+                # print("item in pod.Items:", item.ID)
+                if item.ID in item_id_list:
+                    print("item.ID in item_id_list:", item.ID)
+                    resize_pods[pod.ID] = pod
+
+        print(resize_pods)
+        return resize_pods
+
+    # Initialize sets and parameters
+    def _InitSets(self, warehouseInstance, batch_size):
+        # V Set of nodes, including shelves V^S and stations (depots)
+        # V^D (V=V^S U V^D)
+        # Add output and input depots
+        self.V__D__C = warehouseInstance.OutputStations
+
+        self.V__D__F = {}
+        self.V__D = {**self.V__D__C, **self.V__D__F}
+        # hli
+        # self.V__S = warehouseInstance.Pods
+        self.V__S = self.preprocessingFilterPods(warehouseInstance)
+        # Merge dictionaries
+        self.V = {**self.V__D, **self.V__S}
+
+    def CalculateDistance(self):
+
+        file_path = r'data/distances/' + os.path.splitext(os.path.basename(self.Warehouse.InstanceFile))[0] + '.json'
+
+        if not path.exists(file_path):
+            # Create d_ij
+            # d_ij = tupledict()
+            d_ij = {}
+
+            # Loop over all nodes
+            for key_i, node_i in self.V.items():
+                for key_j, node_j in self.V.items():
+                    source = 'w' + node_i.GetPickWaypoint().ID
+                    target = 'w' + node_j.GetPickWaypoint().ID
+
+                    # Calc distance with weighted shortest path
+                    d_ij[(key_i, key_j)] = nx.shortest_path_length(self.Graph, source=source, target=target,
+                                                                   weight='weight')
+
+            # Parse and save
+            d_ij_dict = {}
+            for key, value in d_ij.items():
+                i, j = key
+                if i not in d_ij_dict:
+                    d_ij_dict[i] = {}
+                d_ij_dict[i][j] = value
+
+            with open(file_path, 'w') as fp:
+                json.dump(d_ij_dict, fp)
+
+        else:
+            # Load and deparse
+            with open(file_path, 'r') as fp:
+                d_ij_dict = json.load(fp)
+            print('d_ij file %s loaded' % file_path)
+            d_ij = {}
+            for i, values in d_ij_dict.items():
+                for j, dist in values.items():
+                    d_ij[i, j] = dist
+
+        return d_ij
+
+
+class Demo():
+    def __init__(self, splitOrders=False):
+
+        self.batch_weight = 18
+        self.item_id_pod_id_dict = {}
+        self.station_id_bot_id_dict = dict()
+        # [0]
+        self.warehouseInstance = self.prepareData()
+        self.distance_ij = self.initData()
+        # [2]
+        if storagePolicies.get('dedicated'):
+            self.is_storage_dedicated = True
+        else:
+            self.is_storage_dedicated = False
+
+    # warehouse instance
+    def prepareData(self):
+        print("[0] preparing all data with the standard format: ")
+        # Every instance
+        for key, instanceFile in instances.items():
+            podAmount = key[0]
+            depotAmount = key[1]
+            # For different orders
+            for key, orderFile in orders.items():
+                orderAmount = key
+                # For storage policies
+                for storagePolicy, storagePolicyFile in storagePolicies.items():
+                    warehouseInstance = instance.Warehouse(layoutFile, instanceFile, podInfoFile, storagePolicyFile,
+                                                           orderFile)
+        return warehouseInstance
+
+    # distance
+    def initData(self):
+        print("[1] changing data format for the algorithm we used here: ")
+        warehouse_data_processing = WarehouseDateProcessing(self.warehouseInstance)
+        # Distance d_ij between two nodes i,j \in V
+        d_ij = warehouse_data_processing.CalculateDistance()
+        return d_ij
+
+    # get pod for each item
+    def build_trie_for_items(self):
+        trie = defaultdict(dict)
+        for key, item in self.warehouseInstance.ItemDescriptions.items():
+            trie[item.Letter][item.Color] = item.ID
+        return trie
 
     def fill_item_id_pod_id_dict(self):
         """
@@ -71,7 +195,11 @@ class GreedyMixedShelves(Demo):
                 item_id = trie[product][color]
                 self.item_id_pod_id_dict[item_id][key] = int(item.Count)
 
+    def fill_station_id_bot_id_dict(self):
+        for key, bot in self.warehouseInstance.Bots.items():
+            self.station_id_bot_id_dict[bot.OutputStation] = key
 
+    # define get functions for better readability and accessibility of data
     def get_items_by_order(self, order_idx):
         """
         In contrary to the base get_items_by_order function this function returns a list containing an item as
@@ -85,6 +213,9 @@ class GreedyMixedShelves(Demo):
         for item_id, item in self.warehouseInstance.Orders[order_idx].Positions.items():
             item_ids.extend([item_id] * int(item.Count))
         return item_ids
+
+    def get_weight_by_item(self, item_idx):
+        return self.warehouseInstance.ItemDescriptions[item_idx].Weight
 
     def get_items_plus_quant_by_order(self, order_idx) -> dict:
         """
@@ -110,6 +241,53 @@ class GreedyMixedShelves(Demo):
         for item in items_of_order:
             weights.append(self.get_weight_by_item(item))
         return np.sum(weights)
+
+    def get_weight_per_batch(self):
+        weight_dict = dict()
+        for batch_id, batch in self.batches.items():
+            weight_dict[batch_id] = batch.weight
+        return weight_dict
+
+    def get_distance_between_items(self, item1, item2):
+        shelf1 = self.item_id_pod_id_dict[item1]
+        shelf2 = self.item_id_pod_id_dict[item2]
+        return self.distance_ij[shelf1, shelf2]
+
+    def get_fitness_of_batch(self, batch: BatchNew):
+        distances = []
+        distances.append(self.distance_ij[batch.pack_station, batch.route[0]])
+        for first, second in zip(batch.route, batch.route[1:]):
+            distances.append(self.distance_ij[first, second])
+        distances.append(self.distance_ij[batch.pack_station, batch.route[-1]])
+        return np.sum(distances)
+
+    def get_fitness_of_tour(self, batch_route, pack_station):
+        distances = []
+        distances.append(self.distance_ij[pack_station, batch_route[0]])
+        for first, second in zip(batch_route, batch_route[1:]):
+            distances.append(self.distance_ij[first, second])
+        distances.append(self.distance_ij[pack_station, batch_route[-1]])
+        return np.sum(distances)
+
+    def get_fitness_of_solution(self):
+        distances = []
+        for batch in self.batches.values():
+            distances.append(self.get_fitness_of_batch(batch))
+        return np.sum(distances)
+
+
+class GreedyMixedShelves(Demo):
+    def __init__(self):
+        super(GreedyMixedShelves, self).__init__()
+        self.item_id_pod_id_dict = defaultdict(dict)
+        self.solution = None
+        self.orders_of_batches = dict()
+        self.batches = dict()
+        self.batch_count = 0
+        self.fill_item_id_pod_id_dict()
+        self.fill_station_id_bot_id_dict()
+        self.warehouseInstance.Orders = {str(key): value for key, value in enumerate(self.warehouseInstance.Orders)}
+        self.could_not_assign = defaultdict(list)
 
     def get_station_with_min_total_distance(self, order_idx, retrieve_station_only=False):
         """
@@ -255,7 +433,8 @@ class GreedyMixedShelves(Demo):
                     min_pos, min_pos_dist = min(added_dists.items(), key=itemgetter(1))
                     shelf_add_distances[shelf, min_pos] = min_pos_dist
                 else:
-                    print("Shelf {} has not more units of item {}.".format(shelf, item.orig_ID))
+                    pass
+                    # print("Shelf {} has not more units of item {}.".format(shelf, item.orig_ID))
             min_shelf, min_pos = min(shelf_add_distances, key=shelf_add_distances.get)
 
             batch.route_insert(min_pos, min_shelf, item)
@@ -321,28 +500,6 @@ class GreedyMixedShelves(Demo):
         for pack_station in self.warehouseInstance.OutputStations.keys():
             self.assign_orders_to_batches_greedy(pack_station)
 
-    def get_fitness_of_batch(self, batch: BatchNew):
-        distances = []
-        distances.append(self.distance_ij[batch.pack_station, batch.route[0]])
-        for first, second in zip(batch.route, batch.route[1:]):
-            distances.append(self.distance_ij[first,second])
-        distances.append(self.distance_ij[batch.pack_station, batch.route[-1]])
-        return np.sum(distances)
-
-    def get_fitness_of_tour(self, batch_route, pack_station):
-        distances = []
-        distances.append(self.distance_ij[pack_station, batch_route[0]])
-        for first, second in zip(batch_route, batch_route[1:]):
-            distances.append(self.distance_ij[first, second])
-        distances.append(self.distance_ij[pack_station, batch_route[-1]])
-        return np.sum(distances)
-
-    def get_fitness_of_solution(self):
-        distances = []
-        for batch in self.batches.values():
-            distances.append(self.get_fitness_of_batch(batch))
-        return np.sum(distances)
-
 
 class SimulatedAnnealingMixed(GreedyMixedShelves):
     def __init__(self):
@@ -364,48 +521,52 @@ class SimulatedAnnealingMixed(GreedyMixedShelves):
         return math.exp(-abs(candidateFitness - currentFitness) / T)
 
     def two_opt(self, batch: BatchNew, currentSolution, batch_id, T):
-        for i in range(len(batch.route) - 2):
-            for j in range(i + 2, len(batch.route)):
-                curr_tour = batch.route[:]
-                curr_tour.insert(0, batch.pack_station)
-
+        curr_tour = batch.route[:]
+        curr_tour.insert(0, batch.pack_station)
+        for i in range(len(curr_tour) - 2):
+            for j in range(i + 2, len(curr_tour)):
                 tour = curr_tour[:]
                 tour[i + 1] = tour[j]  # , tour[j] = , tour[i]
                 reverse_order = [curr_tour[m] for m in reversed(range(i + 1, j))]
                 tour[i + 2: j + 1] = reverse_order
                 tour.remove(batch.pack_station)
-
                 batch.route = tour
                 if self.accept(curr_batch=currentSolution[batch_id], candidate_batch=batch, T=T):
                     currentSolution[batch_id] = batch
                     return True
                 else:
-                    curr_tour.remove(batch.pack_station)
-                    batch.route = curr_tour
+                    old_tour = curr_tour[:]
+                    old_tour.remove(batch.pack_station)
+                    batch.route = old_tour
                     continue
         return False
 
-    # def two_opt(self, batch: BatchNew, curr_batch: BatchNew, T):
-    #     for i in range(len(batch.route) - 2):
-    #         for j in range(i + 2, len(batch.route)):
-    #             curr_tour = batch.route[:]
-    #             curr_tour.insert(0, batch.pack_station)
-    #
-    #             tour = curr_tour[:]
-    #             tour[i + 1] = tour[j]  # , tour[j] = , tour[i]
-    #             reverse_order = [curr_tour[m] for m in reversed(range(i + 1, j))]
-    #             tour[i + 2: j + 1] = reverse_order
-    #             tour.remove(batch.pack_station)
-    #
-    #             batch.route = tour
-    #             if self.accept(curr_batch=curr_batch, candidate_batch=batch, T=T):
-    #                 # currentSolution[batch_id] = batch
-    #                 return True
-    #             else:
-    #                 curr_tour.remove(batch.pack_station)
-    #                 batch.route = curr_tour
-    #                 continue
-    #     return False
+    def two_opt_randomized(self, batch: BatchNew, currentSolution, batch_id, T):
+        """
+        Faster version of two opt where two random edges are exchanged instead of comparing any two pairs
+        :param batch:
+        :param currentSolution:
+        :param batch_id:
+        :param T:
+        :return:
+        """
+        curr_tour = batch.route[:]
+        curr_tour.insert(0, batch.pack_station)
+        i = np.random.choice(range(len(curr_tour) - 2))
+        j = np.random.choice(range(i + 2, len(curr_tour)))
+        tour = curr_tour[:]
+        tour[i + 1] = tour[j]
+        reverse_order = [curr_tour[m] for m in reversed(range(i + 1, j))]
+        tour[i + 2: j + 1] = reverse_order
+        tour.remove(batch.pack_station)
+        batch.route = tour
+        if self.accept(curr_batch=currentSolution[batch_id], candidate_batch=batch, T=T):
+            currentSolution[batch_id] = batch
+            return True
+        else:
+            curr_tour.remove(batch.pack_station)
+            batch.route = curr_tour
+            return False
 
     def switch_stations(self, batch: BatchNew):
         """
@@ -415,41 +576,6 @@ class SimulatedAnnealingMixed(GreedyMixedShelves):
         curr_ps = batch.pack_station
         new_ps = np.random.choice(np.setdiff1d(list(self.warehouseInstance.OutputStations.keys()), curr_ps))
         return new_ps
-
-    # def perform_sim_annealing(self):
-    #     # Simulated Annealing Parameters
-    #     if not self.batches:
-    #         # Run the greedy heuristic and get the current solution with the current fitness value
-    #         self.apply_greedy_heuristic()
-    #         self.greedyFitness = self.get_fitness_of_solution()
-    #         print("Fitness of greedy solution: ", self.greedyFitness)
-    #
-    #     print("Starting simulated annealing with current fitness: ", self.get_fitness_of_solution())
-    #     for batch_id in list(self.batches.keys())[:]:
-    #         self.simulatedAnnealing(self.batches[batch_id], batch_id)
-    #         self.batches = {value.ID: value for value in self.batches.values()}  # update keys in accordence to possible new batch ids
-    #     print("Fitness of Simulated Annealing: ", self.get_fitness_of_solution())
-    #
-    #
-    # def simulatedAnnealing(self, batch: BatchNew, batch_id, alpha=0.975, maxIteration=1000, minTemperature=0.1,
-    #                        mutation_prob=0.2, max_it_without_change=25):
-    #     iteration = 0
-    #     it_without_change = 0
-    #     T = max(self.distance_ij.values()) - min(list(self.distance_ij.values()))
-    #     while T >= minTemperature and iteration < maxIteration and it_without_change < max_it_without_change:
-    #         curr_batch = copy.deepcopy(batch)
-    #         if np.random.random() <= mutation_prob:
-    #             batch.pack_station = self.switch_stations(batch)
-    #             print("New pack station for batch {}: ".format(batch.ID), batch.pack_station)
-    #             self.greedy_cobot_tour(batch)  # recalculate the greedy tour with new pack station
-    #         made_change = self.two_opt(batch, curr_batch, T)
-    #         if not made_change:
-    #             batch = curr_batch
-    #             it_without_change += 1
-    #         else:
-    #             it_without_change = 0
-    #         T *= alpha
-    #         iteration += 1
 
     def simulatedAnnealing(self, alpha=0.975, maxIteration=1000, minTemperature=0.1, mutation_prob=0.2,
                            max_it_without_change=25, batch_id=None):
@@ -533,69 +659,55 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         print("fitness after perturbation: ", self.get_fitness_of_solution())
         return history
 
+    def replace_order(self, batch: BatchNew, add_order, remove_order):
+        batch.del_order(remove_order)
+        batch.add_order(add_order)
+        self.greedy_cobot_tour(batch)  # optimize tour to accurately validate the change in fitness
+        self.simulatedAnnealing(batch_id=batch.ID, mutation_prob=0.05)
+
     def local_search(self, max_iters=10):
         """
         perform simple swap of orders to batches
         :return:
         """
-        #weight_dict = self.get_weight_per_batch()
         iters = 0
         curr_fit = self.get_fitness_of_solution()
         curr_sol = copy.deepcopy(self.batches)
         while iters < max_iters:
-            i, j = np.random.choice(list(self.batches.keys()), 2, replace=False)
-            order_i, order_j = self.determine_switchable_orders(i, j)
-            if not order_i:
-                iters += 1
-                continue
-            else:
-                self.batches[i].del_order(curr_sol[i].orders[order_i])
-                self.batches[i].add_order(curr_sol[j].orders[order_j])
-                self.greedy_cobot_tour(self.batches[i])
-                self.simulatedAnnealing(batch_id=self.batches[i].ID, mutation_prob=0.05)
-
-                self.batches[j].del_order(curr_sol[j].orders[order_j])
-                self.batches[j].add_order(curr_sol[i].orders[order_i])
-                self.greedy_cobot_tour(self.batches[j])
-                self.simulatedAnnealing(batch_id=self.batches[j].ID, mutation_prob=0.05)
-                if self.get_fitness_of_solution() < curr_fit:
+            batch_i, batch_j = np.random.choice(list(self.batches.values()), 2, replace=False)
+            order_i, order_j = self.determine_switchable_orders(batch_i, batch_j)
+            if order_i:
+                self.replace_order(batch_i, add_order=order_j, remove_order=order_i)
+                self.replace_order(batch_j, add_order=order_i, remove_order=order_j)
+                if self.get_fitness_of_solution() <= curr_fit:
                     curr_sol = copy.deepcopy(self.batches)
                     curr_fit = self.get_fitness_of_solution()
                 else:
                     self.batches = copy.deepcopy(curr_sol)
-                iters += 1
+            iters += 1
 
-    def determine_switchable_orders(self, i, j):
-
-        order_dict_i = {}
-        for order_id, order in self.batches[i].orders.items():
-            order_dict_i[order_id] = order.weight
-        order_df_i = pd.DataFrame.from_dict(order_dict_i, orient="index", columns=[i]).assign(merge_key=1).reset_index()
-        order_df_i.columns = ["order_id_i", "weight_i", "merge_key"]
-
-        order_dict_j = {}
-        for order_id, order in self.batches[j].orders.items():
-            order_dict_j[order_id] = order.weight
-        order_df_j = pd.DataFrame.from_dict(order_dict_j, orient="index", columns=[j]).assign(merge_key=1).reset_index()
-        order_df_j.columns = ["order_id_j", "weight_j", "merge_key"]
-
-        order_df = order_df_i.merge(order_df_j, on="merge_key")
-        order_df.drop("merge_key", axis=1, inplace=True)
-        order_df = order_df.assign(kappa_left_i=self.batch_weight-self.batches[i].weight)
-        order_df = order_df.assign(kappa_left_j=self.batch_weight - self.batches[j].weight)
-        order_df["diff"] = order_df["weight_i"] - order_df["weight_j"]
-        order_df = order_df.sample(frac=1)  # random permutation for further randomization of local search
-        for idx, row in order_df.iterrows():
-            if row["diff"] < 0:  # order of batch j is larger, does it fit into i?
-                if abs(row["diff"]) < row["kappa_left_i"]:
-                    switch_order = (row["order_id_i"], row["order_id_j"])
-                    return switch_order
-            elif row["diff"] > 0:  # order of batch i is larger, does it fit into j?
-                if row["diff"] < row["kappa_left_j"]:
-                    switch_order = (row["order_id_i"], row["order_id_j"])
-                    return switch_order
+    def determine_switchable_orders(self, batch_i, batch_j):
+        """
+        given two batches (batch ids), this function determines one order of each batch which can be exchanged between
+        the batches (wrt to capacity restrictions).
+        :param batch_i:
+        :param batch_j:
+        :return:
+        """
+        batch_i_orders = list(batch_i.orders.values())
+        batch_j_order = list(batch_j.orders.values())
+        np.random.shuffle(batch_i_orders)
+        np.random.shuffle(batch_j_order)
+        for order_i in batch_i_orders:
+            for order_j in batch_j_order:
+                weight_diff = order_i.weight - order_j.weight
+                if weight_diff < 0:
+                    if abs(weight_diff) <= self.batch_weight - batch_i.weight:
+                        return order_i, order_j
+                elif weight_diff > 0:
+                    if weight_diff <= self.batch_weight - batch_j.weight:
+                        return order_i, order_j
         return None, None
-
 
     def update_batches_from_new_order(self, new_order, batch_id):
         update_batch = self.batches[batch_id]
@@ -607,16 +719,17 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         print("partial solution before sim ann (update step): ", self.get_fitness_of_solution())
         self.simulatedAnnealing(batch_id=batch_id, mutation_prob=0.05)
 
-    def perform_ils(self, num_iters, threshold):
+    def perform_ils(self, num_iters, t_max, threshold):
         iter = 0
         iter_last = 0
+        starttime = time.time()
+        t = time.time() - starttime
         curr_fit = self.get_fitness_of_solution()
         best_fit = curr_fit
         curr_sol = copy.deepcopy(self.batches)
         best_sol = copy.deepcopy(curr_sol)
         history = None
-        while iter < num_iters:
-            iter += 1
+        while iter < num_iters and t < t_max:
             history = self.perturbation(history)
             self.local_search(10)
             neighbor_fit = self.get_fitness_of_solution()
@@ -633,6 +746,8 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                 curr_sol = self.get_fitness_of_solution()  # reset
             else:
                 self.batches = copy.deepcopy(curr_sol)  # don´t accept new solution and stick with the current one
+            iter += 1
+            t = time.time() - starttime
         return best_sol, best_fit
 
 
@@ -694,6 +809,7 @@ class VariableNeighborhoodSearch(IteratedLocalSearchMixed):
             k = 1
             while k < k_max:
                 self.shake(k)
+                self.local_search(10)
                 neighbor_fit = self.get_fitness_of_solution()
                 if neighbor_fit < curr_fit:
                     curr_fit = neighbor_fit  # accept new solution
@@ -712,17 +828,29 @@ class VariableNeighborhoodSearch(IteratedLocalSearchMixed):
 
 
 if __name__ == "__main__":
-    np.random.seed(523381)
-    # _demo = Demo()
-    # if _demo.is_storage_dedicated:
-    #     greedy = GreedyHeuristic()
-    #     greedy.apply_greedy_heuristic()
-    #     print("old heuristic: ", greedy.get_fitness_of_solution())
-    ils = IteratedLocalSearchMixed()
-    ils.perform_ils(20, 15)
+    starttime = time.time()
+    np.random.seed(5232381)
+    #ils = GreedyMixedShelves()
+    #ils.apply_greedy_heuristic()
+    #ils = IteratedLocalSearchMixed()
+    #ils.perform_ils(1, 15)
     #ils = VariableNeighborhoodSearch()
-    #ils.reduced_vns(50, 50, 3)
-
-    #ils = SimulatedAnnealingMixed()
-    #ils.simulatedAnnealing()
-    print("new heuristic: ", ils.get_fitness_of_solution())
+    #ils.reduced_vns(50, 60, 3)
+    #print("new heuristic: ", ils.get_fitness_of_solution())
+    #print("Runtime for algorithm was: ", time.time() - starttime)
+    #print([ils.batches[i].weight for i in list(ils.batches.keys())])
+    #print({i: [j.weight for j in batch.orders.values()] for i, batch in list(ils.batches.items())})
+    seed_dicts = {}
+    for seed in [1758, 12389, 12411]:
+        np.random.seed(seed)
+        sols_and_runtimes = {}
+        for runtime in [0, 5, 10, 20, 30, 50, 80, 100]:
+            if runtime == 0:
+                ils = GreedyMixedShelves()
+                ils.apply_greedy_heuristic()
+            else:
+                ils = IteratedLocalSearchMixed()
+                ils.perform_ils(100, runtime, 100)
+            sols_and_runtimes[runtime] = ils.get_fitness_of_solution()
+        print(sols_and_runtimes)
+        seed_dicts[seed] = sols_and_runtimes

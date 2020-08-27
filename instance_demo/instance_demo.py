@@ -23,7 +23,7 @@ import copy
 import random
 
 # ------------------------------------------- CONFIG -------------------------------------------------------------------
-SKU = "24"  # options: 24 and 360
+SKU = "360"  # options: 24 and 360
 
 layoutFile = r'data/layout/1-1-1-2-1.xlayo'
 podInfoFile = 'data/sku{}/pods_infos.txt'.format(SKU)
