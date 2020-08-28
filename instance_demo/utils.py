@@ -1,3 +1,7 @@
+"""
+This script contains container classes for the objects of the solution
+"""
+
 import xml.etree.cElementTree as ET
 from collections import defaultdict
 import re
