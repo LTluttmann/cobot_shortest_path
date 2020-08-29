@@ -28,9 +28,9 @@ import copy
 import random
 
 # ------------------------------------------- CONFIG -------------------------------------------------------------------
-SKU = "360"  # options: 24 and 360
+SKU = "24"  # options: 24 and 360
 SUBSCRIPT = "_a"
-NUM_ORDERS = 20
+NUM_ORDERS = 10
 
 layoutFile = r'data/layout/1-1-1-2-1.xlayo'
 podInfoFile = 'data/sku{}/pods_infos.txt'.format(SKU)
@@ -39,8 +39,8 @@ instances = {}
 instances[24, 2] = r'data/sku{}/layout_sku_{}_2.xml'.format(SKU, SKU)
 
 storagePolicies = {}
-storagePolicies['dedicated'] = 'data/sku{}/pods_items_dedicated_1.txt'.format(SKU)
-#storagePolicies['mixed'] = 'data/sku{}/pods_items_mixed_shevels_1-5.txt'.format(SKU)
+#storagePolicies['dedicated'] = 'data/sku{}/pods_items_dedicated_1.txt'.format(SKU)
+storagePolicies['mixed'] = 'data/sku{}/pods_items_mixed_shevels_1-5.txt'.format(SKU)
 
 orders = {}
 orders['{}_5'.format(str(NUM_ORDERS))] = r'data/sku{}/orders_{}_mean_5_sku_{}{}.xml'.format(SKU, str(NUM_ORDERS), SKU, SUBSCRIPT)
@@ -293,7 +293,6 @@ class GreedyMixedShelves(Demo):
         self.solution = None
         self.orders_of_batches = dict()
         self.batches = dict()
-        self.batch_count = 0
         self.fill_item_id_pod_id_dict()
         self.fill_station_id_bot_id_dict()
         self.warehouseInstance.Orders = {str(key): value for key, value in enumerate(self.warehouseInstance.Orders)}
@@ -496,7 +495,6 @@ class GreedyMixedShelves(Demo):
                     forbidden_for_batch.append(new_order)
                 print("the current batch ({}) looks as follows: {}".format(batch.ID, batch.orders))
             self.batches[batch_id] = batch
-            self.batch_count += 1
 
     def apply_greedy_heuristic(self):
         if self.batches:
@@ -546,29 +544,18 @@ class SimulatedAnnealingMixed(GreedyMixedShelves):
         return False
 
     def two_opt_randomized(self, batch: BatchNew, currentSolution, batch_id, T):
-        """
-        Faster version of two opt where two random edges are exchanged instead of comparing any two pairs
-        :param batch:
-        :param currentSolution:
-        :param batch_id:
-        :param T:
-        :return:
-        """
         curr_tour = batch.route[:]
-        curr_tour.insert(0, batch.pack_station)
-        i = np.random.choice(range(len(curr_tour) - 2))
-        j = np.random.choice(range(i + 2, len(curr_tour)))
-        tour = curr_tour[:]
-        tour[i + 1] = tour[j]
-        reverse_order = [curr_tour[m] for m in reversed(range(i + 1, j))]
-        tour[i + 2: j + 1] = reverse_order
-        tour.remove(batch.pack_station)
-        batch.route = tour
+        tour = batch.route
+        length = range(len(tour))
+        i, j = random.sample(length, 2)
+        tour = tour[:]
+        tour[i], tour[j] = tour[j], tour[i]
+        reverse_order = [tour[m] for m in reversed(range(i + 1, j))]
+        tour[i + 1: j] = reverse_order
         if self.accept(curr_batch=currentSolution[batch_id], candidate_batch=batch, T=T):
             currentSolution[batch_id] = batch
             return True
         else:
-            curr_tour.remove(batch.pack_station)
             batch.route = curr_tour
             return False
 
@@ -629,7 +616,7 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         update_batch.add_order(new_order)
         self.greedy_cobot_tour(update_batch, new_order.items)
         print("partial solution before sim ann (update step): ", self.get_fitness_of_solution())
-        self.simulatedAnnealing(batch_id=batch_id, mutation_prob=0.15)
+        self.simulatedAnnealing(batch_id=batch_id, mutation_prob=0.2)
 
     def perturbation(self, history=None):
         print("Performing perturbation")
@@ -661,7 +648,6 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                 batch_id = pack_station + "_" + str(self.get_new_batch_id())
                 self.batches[batch_id] = BatchNew(batch_id, pack_station, self.station_id_bot_id_dict[pack_station])
                 self.update_batches_from_new_order(order, batch_id)
-                self.batch_count += 1
                 history = batch_id
             else:
                 # choose the batch with maximum workload after assignment
@@ -730,13 +716,14 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         best_fit = curr_fit
         curr_sol = copy.deepcopy(self.batches)
         best_sol = copy.deepcopy(curr_sol)
+        T = self.get_fitness_of_solution() * 0.04
         history = None
         while iter < num_iters and t < t_max:
             history = self.perturbation(history)
             self.local_search(7)
             neighbor_fit = self.get_fitness_of_solution()
             print("perturbation: curr fit: {}; cand fit {}".format(curr_fit, neighbor_fit))
-            if self.acceptWithProbability(neighbor_fit, curr_fit, T):
+            if neighbor_fit < curr_fit or self.acceptWithProbability(neighbor_fit, curr_fit, T):
                 curr_fit = neighbor_fit  # accept new solution
                 curr_sol = copy.deepcopy(self.batches)
                 self.item_id_pod_id_dict_copy = copy.deepcopy(self.item_id_pod_id_dict)
@@ -755,8 +742,7 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
 class VariableNeighborhoodSearch(IteratedLocalSearchMixed):
     """
     we need different neighborhoods (x \in N_k, where k = {1,...,k_max} and k_max is typically 2 or 3)
-    Idea: Shake1 is perturbation as it is used in ILS. Shake2 is then to destroy 2 batches at once.
-    Shake3 could include the assignment of items to shelves (ok das passiert schon bei greedy cobot tour).
+    Idea: Shake1 is perturbation as it is used in ILS. Shake2 is then to destroy 2 batches at once and so on
     """
     def __init__(self):
         super(VariableNeighborhoodSearch, self).__init__()
@@ -764,6 +750,7 @@ class VariableNeighborhoodSearch(IteratedLocalSearchMixed):
     def shake(self, k):
         print("Performing perturbation")
         weight_dict = self.get_weight_per_batch()
+        k = k if k < len(weight_dict) else len(weight_dict)-1
         probabilities = []
         keys = []
         for key, weight in weight_dict.items():
@@ -771,6 +758,7 @@ class VariableNeighborhoodSearch(IteratedLocalSearchMixed):
             keys.append(key)
         probabilities = [float(i) / sum(probabilities) for i in probabilities]
         destroy_batches = np.random.choice(keys, k, replace=False, p=probabilities)  # destroy k batches
+        destroy_batch = np.random.choice(keys, k, replace=False)
         [weight_dict.pop(destroy_batch) for destroy_batch in destroy_batches]
         # merge dictionaries of orders of the batches that should be destroyed
         orders = eval("{"+",".join(["**self.batches[destroy_batches[{}]].orders".format(i) for i in range(len(destroy_batches))])+"}")
@@ -789,10 +777,10 @@ class VariableNeighborhoodSearch(IteratedLocalSearchMixed):
                 batch_id = pack_station + "_" + str(self.get_new_batch_id())
                 self.batches[batch_id] = BatchNew(batch_id, pack_station, self.station_id_bot_id_dict[pack_station])
                 self.update_batches_from_new_order(order, batch_id)
-                self.batch_count += 1
             else:
                 # choose the batch with maximum workload after assignment
-                new_batch_of_order = max(candidate_batches.keys(), key=(lambda k: candidate_batches[k]))
+                new_batch_of_order = np.random.choice(list(candidate_batches.keys()))
+                #  new_batch_of_order = max(candidate_batches.keys(), key=(lambda k: candidate_batches[k]))
                 self.update_batches_from_new_order(new_order=order, batch_id=new_batch_of_order)
             # update weight_dict
             weight_dict = self.get_weight_per_batch()
@@ -806,13 +794,14 @@ class VariableNeighborhoodSearch(IteratedLocalSearchMixed):
         best_fit = curr_fit
         curr_sol = copy.deepcopy(self.batches)
         best_sol = copy.deepcopy(curr_sol)
+        T = self.get_fitness_of_solution() * 0.04
         while iters < max_iters and t < t_max:
             k = 1
             while k < k_max:
                 self.shake(k)
-                # self.local_search(10)
+                self.local_search(22)
                 neighbor_fit = self.get_fitness_of_solution()
-                if neighbor_fit < curr_fit:
+                if neighbor_fit < curr_fit:  # or self.acceptWithProbability(neighbor_fit, curr_fit, T):
                     curr_fit = neighbor_fit  # accept new solution
                     curr_sol = copy.deepcopy(self.batches)
                     k = 1
@@ -823,23 +812,71 @@ class VariableNeighborhoodSearch(IteratedLocalSearchMixed):
                     self.batches = copy.deepcopy(curr_sol)  # don´t accept new solution and stick with the current one
                     k += 1
             iters += 1
+            T *= 0.9
             t = time.time() - starttime
         self.batches = best_sol
 
 
 
 if __name__ == "__main__":
-    sols_and_runtimes = {}
-    runtimes=[0, 5, 10, 20, 30, 50, 80, 120]
-    runtimes=[70]
-    for runtime in runtimes:
-        np.random.seed(5232381)
-        if runtime == 0:
-            ils = GreedyMixedShelves()
-            ils.apply_greedy_heuristic()
-        else:
-            ils = IteratedLocalSearchMixed()
-            ils.perform_ils(100, runtime)
-        sols_and_runtimes[runtime] = ils.get_fitness_of_solution()
-    print(sols_and_runtimes)
-    print({batch.ID: batch.route for batch in ils.batches.values()})
+    # sols_and_runtimes = {}
+    # runtimes=[0, 5, 10, 20, 30, 50, 80, 120]
+    # runtimes=[70]
+    # for runtime in runtimes:
+    #     np.random.seed(5232381)
+    #     if runtime == 0:
+    #         ils = GreedyMixedShelves()
+    #         ils.apply_greedy_heuristic()
+    #     else:
+    #         ils = IteratedLocalSearchMixed()
+    #         ils.perform_ils(100, runtime)
+    #     sols_and_runtimes[runtime] = ils.get_fitness_of_solution()
+    # print(sols_and_runtimes)
+    # print({batch.ID: batch.route for batch in ils.batches.values()})
+    SKUS = ["360"]  # options: 24 and 360
+    SUBSCRIPTS = ["_b"]
+    NUM_ORDERSS = [10]  # [10,
+
+    instance_sols = {}
+    for SKU in SKUS:
+        for SUBSCRIPT in SUBSCRIPTS:
+            for NUM_ORDERS in NUM_ORDERSS:
+                try:
+                    layoutFile = r'data/layout/1-1-1-2-1.xlayo'
+                    podInfoFile = 'data/sku{}/pods_infos.txt'.format(SKU)
+                    instances = {}
+                    instances[24, 2] = r'data/sku{}/layout_sku_{}_2.xml'.format(SKU, SKU)
+
+                    storagePolicies = {}
+                    #storagePolicies['dedicated'] = 'data/sku{}/pods_items_dedicated_1.txt'.format(SKU)
+                    storagePolicies['mixed'] = 'data/sku{}/pods_items_mixed_shevels_1-5.txt'.format(SKU)
+
+                    orders = {}
+                    orders['{}_5'.format(str(NUM_ORDERS))] = r'data/sku{}/orders_{}_mean_5_sku_{}{}.xml'.format(SKU,
+                                                                                                                str(
+                                                                                                                    NUM_ORDERS),
+                                                                                                                SKU,
+                                                                                                                SUBSCRIPT)
+                    #orders['10_5'] = r'data/sku{}/orders_10_mean_1x6_sku_{}.xml'.format(SKU, SKU)
+                    sols_and_runtimes = {}
+                    runtimes = [5, 20, 40, 80]
+                    # runtimes=[25]
+                    for runtime in runtimes:
+                        np.random.seed(523381)
+                        if runtime == 0:
+                            ils = GreedyMixedShelves()
+                            ils.apply_greedy_heuristic()
+                        else:
+                            ils = VariableNeighborhoodSearch()
+                            ils.reduced_vns(1500, runtime, 3)
+                        sols_and_runtimes[runtime] = (ils.get_fitness_of_solution(),
+                                                      {batch.ID: batch.route for
+                                                       batch in ils.batches.values()})
+                    print(sols_and_runtimes)
+                except Exception as e:
+                    print(e)
+                    continue
+                instance_sols[(SKU, SUBSCRIPT, NUM_ORDERS)] = sols_and_runtimes
+
+    with open('../analyse_solution/solutions/mixed16.pickle', 'wb') as handle:
+        pickle.dump(instance_sols, handle, protocol=pickle.HIGHEST_PROTOCOL)

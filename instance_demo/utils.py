@@ -17,6 +17,13 @@ class Batch:
         self.cobot = cobot
         self.pack_station = pack_station
 
+    def determine_edges(self, item_id_pod_id_dict):
+        edges = [self.pack_station]
+        for item in self.route:
+            edges.append(item_id_pod_id_dict[item])
+        edges.append(self.pack_station)
+        return edges
+
 
 class Edge:
     def __init__(self, i, j):
