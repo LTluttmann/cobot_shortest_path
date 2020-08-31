@@ -1,0 +1,232 @@
+<?xml version="1.0" ?>
+<root>
+   <Collecting>
+      <Split>
+         <PackStation ID="OutD0">
+            <Batch ID="1">
+               <Order>0</Order>
+               <Order>1</Order>
+            </Batch>
+            <Batch ID="3">
+               <Order>4</Order>
+               <Order>7</Order>
+               <Order>8</Order>
+            </Batch>
+            <Batch ID="5">
+               <Order>3</Order>
+               <Order>9</Order>
+            </Batch>
+         </PackStation>
+         <PackStation ID="OutD1">
+            <Batch ID="4">
+               <Order>2</Order>
+               <Order>5</Order>
+            </Batch>
+            <Batch ID="2">
+               <Order>6</Order>
+            </Batch>
+         </PackStation>
+      </Split>
+      <PackStations>
+         <PackStation ID="OutD0">
+            <Batch BatchNumber="1" Distance="174.49999999999997">
+               <ItemsData>
+                  <Orders>
+                     <Order ID="0">
+                        <Item ID="11" Pod="129" Type="darksalmon/a"/>
+                        <Item ID="11" Pod="129" Type="darksalmon/a"/>
+                     </Order>
+                     <Order ID="1">
+                        <Item ID="4" Pod="79" Type="firedbrick/a"/>
+                        <Item ID="6" Pod="144" Type="darkred/a"/>
+                        <Item ID="14" Pod="217" Type="lightsalmon/a"/>
+                        <Item ID="7" Pod="349" Type="red/a"/>
+                        <Item ID="11" Pod="129" Type="darksalmon/a"/>
+                        <Item ID="11" Pod="129" Type="darksalmon/a"/>
+                        <Item ID="10" Pod="150" Type="tomato/a"/>
+                        <Item ID="1" Pod="36" Type="lightcoral/a"/>
+                     </Order>
+                     <Order ID="2"/>
+                     <Order ID="3"/>
+                     <Order ID="4"/>
+                     <Order ID="5"/>
+                     <Order ID="6"/>
+                     <Order ID="7"/>
+                     <Order ID="8"/>
+                     <Order ID="9"/>
+                  </Orders>
+               </ItemsData>
+               <Edges>
+                  <Edge EndNode="150" StartNode="OutD0"/>
+                  <Edge EndNode="129" StartNode="150"/>
+                  <Edge EndNode="144" StartNode="129"/>
+                  <Edge EndNode="79" StartNode="144"/>
+                  <Edge EndNode="36" StartNode="79"/>
+                  <Edge EndNode="349" StartNode="36"/>
+                  <Edge EndNode="217" StartNode="349"/>
+                  <Edge EndNode="OutD0" StartNode="217"/>
+               </Edges>
+            </Batch>
+            <Batch BatchNumber="3" Distance="181.39999999999995">
+               <ItemsData>
+                  <Orders>
+                     <Order ID="0"/>
+                     <Order ID="1"/>
+                     <Order ID="2"/>
+                     <Order ID="3"/>
+                     <Order ID="4">
+                        <Item ID="14" Pod="217" Type="lightsalmon/a"/>
+                        <Item ID="0" Pod="14" Type="rosybrown/a"/>
+                        <Item ID="2" Pod="128" Type="indiaread/a"/>
+                        <Item ID="7" Pod="349" Type="red/a"/>
+                        <Item ID="6" Pod="144" Type="darkred/a"/>
+                        <Item ID="11" Pod="129" Type="darksalmon/a"/>
+                        <Item ID="18" Pod="67" Type="saddlebrown/a"/>
+                        <Item ID="5" Pod="51" Type="maroon/a"/>
+                        <Item ID="8" Pod="23" Type="mistryrose/a"/>
+                     </Order>
+                     <Order ID="5"/>
+                     <Order ID="6"/>
+                     <Order ID="7">
+                        <Item ID="17" Pod="74" Type="chocolate/a"/>
+                     </Order>
+                     <Order ID="8">
+                        <Item ID="9" Pod="47" Type="salmon/a"/>
+                        <Item ID="10" Pod="150" Type="tomato/a"/>
+                     </Order>
+                     <Order ID="9"/>
+                  </Orders>
+               </ItemsData>
+               <Edges>
+                  <Edge EndNode="150" StartNode="OutD0"/>
+                  <Edge EndNode="128" StartNode="150"/>
+                  <Edge EndNode="129" StartNode="128"/>
+                  <Edge EndNode="74" StartNode="129"/>
+                  <Edge EndNode="67" StartNode="74"/>
+                  <Edge EndNode="14" StartNode="67"/>
+                  <Edge EndNode="47" StartNode="14"/>
+                  <Edge EndNode="51" StartNode="47"/>
+                  <Edge EndNode="23" StartNode="51"/>
+                  <Edge EndNode="144" StartNode="23"/>
+                  <Edge EndNode="349" StartNode="144"/>
+                  <Edge EndNode="217" StartNode="349"/>
+                  <Edge EndNode="OutD0" StartNode="217"/>
+               </Edges>
+            </Batch>
+            <Batch BatchNumber="5" Distance="134.09999999999997">
+               <ItemsData>
+                  <Orders>
+                     <Order ID="0"/>
+                     <Order ID="1"/>
+                     <Order ID="2"/>
+                     <Order ID="3">
+                        <Item ID="2" Pod="128" Type="indiaread/a"/>
+                        <Item ID="12" Pod="172" Type="coral/a"/>
+                        <Item ID="9" Pod="47" Type="salmon/a"/>
+                        <Item ID="14" Pod="217" Type="lightsalmon/a"/>
+                        <Item ID="14" Pod="217" Type="lightsalmon/a"/>
+                     </Order>
+                     <Order ID="4"/>
+                     <Order ID="5"/>
+                     <Order ID="6"/>
+                     <Order ID="7"/>
+                     <Order ID="8"/>
+                     <Order ID="9">
+                        <Item ID="1" Pod="36" Type="lightcoral/a"/>
+                        <Item ID="12" Pod="172" Type="coral/a"/>
+                        <Item ID="17" Pod="74" Type="chocolate/a"/>
+                        <Item ID="17" Pod="74" Type="chocolate/a"/>
+                        <Item ID="14" Pod="217" Type="lightsalmon/a"/>
+                        <Item ID="16" Pod="35" Type="seashell/a"/>
+                     </Order>
+                  </Orders>
+               </ItemsData>
+               <Edges>
+                  <Edge EndNode="35" StartNode="OutD0"/>
+                  <Edge EndNode="36" StartNode="35"/>
+                  <Edge EndNode="47" StartNode="36"/>
+                  <Edge EndNode="74" StartNode="47"/>
+                  <Edge EndNode="128" StartNode="74"/>
+                  <Edge EndNode="172" StartNode="128"/>
+                  <Edge EndNode="217" StartNode="172"/>
+                  <Edge EndNode="OutD0" StartNode="217"/>
+               </Edges>
+            </Batch>
+         </PackStation>
+         <PackStation ID="OutD1">
+            <Batch BatchNumber="4" Distance="153.89999999999995">
+               <ItemsData>
+                  <Orders>
+                     <Order ID="0"/>
+                     <Order ID="1"/>
+                     <Order ID="2">
+                        <Item ID="7" Pod="349" Type="red/a"/>
+                        <Item ID="17" Pod="74" Type="chocolate/a"/>
+                        <Item ID="12" Pod="172" Type="coral/a"/>
+                        <Item ID="18" Pod="67" Type="saddlebrown/a"/>
+                        <Item ID="4" Pod="79" Type="firedbrick/a"/>
+                        <Item ID="9" Pod="47" Type="salmon/a"/>
+                     </Order>
+                     <Order ID="3"/>
+                     <Order ID="4"/>
+                     <Order ID="5">
+                        <Item ID="12" Pod="172" Type="coral/a"/>
+                        <Item ID="9" Pod="47" Type="salmon/a"/>
+                        <Item ID="5" Pod="51" Type="maroon/a"/>
+                        <Item ID="8" Pod="23" Type="mistryrose/a"/>
+                     </Order>
+                     <Order ID="6"/>
+                     <Order ID="7"/>
+                     <Order ID="8"/>
+                     <Order ID="9"/>
+                  </Orders>
+               </ItemsData>
+               <Edges>
+                  <Edge EndNode="23" StartNode="OutD1"/>
+                  <Edge EndNode="51" StartNode="23"/>
+                  <Edge EndNode="47" StartNode="51"/>
+                  <Edge EndNode="79" StartNode="47"/>
+                  <Edge EndNode="67" StartNode="79"/>
+                  <Edge EndNode="74" StartNode="67"/>
+                  <Edge EndNode="349" StartNode="74"/>
+                  <Edge EndNode="172" StartNode="349"/>
+                  <Edge EndNode="OutD1" StartNode="172"/>
+               </Edges>
+            </Batch>
+            <Batch BatchNumber="2" Distance="171.29999999999995">
+               <ItemsData>
+                  <Orders>
+                     <Order ID="0"/>
+                     <Order ID="1"/>
+                     <Order ID="2"/>
+                     <Order ID="3"/>
+                     <Order ID="4"/>
+                     <Order ID="5"/>
+                     <Order ID="6">
+                        <Item ID="7" Pod="349" Type="red/a"/>
+                        <Item ID="3" Pod="266" Type="brown/a"/>
+                        <Item ID="6" Pod="144" Type="darkred/a"/>
+                        <Item ID="10" Pod="150" Type="tomato/a"/>
+                        <Item ID="18" Pod="67" Type="saddlebrown/a"/>
+                        <Item ID="18" Pod="67" Type="saddlebrown/a"/>
+                        <Item ID="16" Pod="35" Type="seashell/a"/>
+                     </Order>
+                     <Order ID="7"/>
+                     <Order ID="8"/>
+                     <Order ID="9"/>
+                  </Orders>
+               </ItemsData>
+               <Edges>
+                  <Edge EndNode="266" StartNode="OutD1"/>
+                  <Edge EndNode="349" StartNode="266"/>
+                  <Edge EndNode="67" StartNode="349"/>
+                  <Edge EndNode="150" StartNode="67"/>
+                  <Edge EndNode="35" StartNode="150"/>
+                  <Edge EndNode="144" StartNode="35"/>
+                  <Edge EndNode="OutD1" StartNode="144"/>
+               </Edges>
+            </Batch>
+         </PackStation>
+      </PackStations>
+   </Collecting>
+</root>

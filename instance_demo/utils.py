@@ -1,10 +1,21 @@
+"""
+This script contains container classes for the objects of the solution
+"""
+
 import xml.etree.cElementTree as ET
 from collections import defaultdict
 import re
 
+
+class Edge:
+    def __init__(self, i, j):
+        self.StartNode = i
+        self.EndNode = j
+
+
 # container class for a batch
 class Batch:
-    def __init__(self, ID, pack_station, cobot=None):
+    def __init__(self, ID, pack_station, cobot, item_id_pod_id_dict):
         self.ID = ID
         self.orders = []
         self.items = []
@@ -12,12 +23,25 @@ class Batch:
         self.weight = 0
         self.cobot = cobot
         self.pack_station = pack_station
+        self.item_id_pod_id_dict = item_id_pod_id_dict
 
+    def determine_edges(self, item_id_pod_id_dict):
+        edges = [self.pack_station]
+        for item in self.route:
+            edges.append(item_id_pod_id_dict[item])
+        edges.append(self.pack_station)
+        return edges
 
-class Edge:
-    def __init__(self, i, j):
-        self.StartNode = i
-        self.EndNode = j
+    @property
+    def edges(self):
+        route = self.determine_edges(self.item_id_pod_id_dict)
+        edges = []
+        for first, second in zip(route, route[1:]):
+            if first == second:
+                continue
+            else:
+                edges.append(Edge(first, second))
+        return edges
 
 
 class ItemOfOrder:
@@ -80,8 +104,8 @@ class BatchNew:
 
     @pack_station.setter
     def pack_station(self, val):
-        counter = self.ID.split("_")[-1]
-        self.ID = val + "_" + counter
+        # counter = self.ID.split("_")[-1]
+        # self.ID = val + "_" + counter
         self._pack_station = val
 
     @property
@@ -117,20 +141,3 @@ class BatchNew:
             else:
                 edges.append(Edge(first, second))
         return edges
-
-
-class Solution:
-    pass  # todo
-
-
-if __name__ == "__main__":
-    tree = ET.parse("log_example.xml")
-    root = tree.getroot()
-    for bot in root.iter("Bot"):
-        for batch in bot.iter("Batch"):
-            if batch.get("ID"):
-                for order in bot.iter("Order"):
-                    print(bot.get("ID"), batch.get("ID"), order.text)
-            elif batch.get("BatchNumber"):
-                for edge in batch.iter("Edge"):
-                    print(edge.get("EndNode"), edge.get("StartNode"))

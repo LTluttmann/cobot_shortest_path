@@ -1,14 +1,19 @@
-from instance_demo import GreedyMixedShelves, SimulatedAnnealingMixed, VariableNeighborhoodSearch
+"""
+This script implements some tests of the validity of a solution, ie whether all constraints are met
+"""
+
+from agv_routing_mixed import GreedyMixedShelves, SimulatedAnnealingMixed, VariableNeighborhoodSearch, IteratedLocalSearchMixed
+from agv_routing_dedicated import GreedyHeuristic, SimulatedAnnealing, IteratedLocalSearch
 import numpy as np
 
-class SolutionTester(SimulatedAnnealingMixed):
+class SolutionTester(IteratedLocalSearch):
 
     def __init__(self):
         super(SolutionTester, self).__init__()
 
     def count_num_items_taken(self):
         shelves_taken = self.item_id_pod_id_dict
-        shelves_orig = self.item_id_pod_id_dict_copy
+        shelves_orig = self.item_id_pod_id_dict_orig
         total_taken = []
         for key1, shelf in shelves_orig.items():
             for key2, item_count in shelf.items():
@@ -29,13 +34,14 @@ class SolutionTester(SimulatedAnnealingMixed):
             req.append(len(items))
         req = sum(req)
         taken = self.count_num_items_taken()
+        print(taken, req)
         assert taken == req
 
     def weight_test(self):
         total_weight_of_orders = np.sum([self.get_total_weight_by_order('{}'.format(i))
                                          for i in range(len(self.warehouseInstance.Orders.keys()))])
         total_weight_of_batches = np.sum([batch.weight for batch in self.batches.values()])
-        assert total_weight_of_orders == total_weight_of_batches
+        assert int(total_weight_of_orders) == int(total_weight_of_batches)  # transform to ints to avoid rounding errors
 
     def capacity_test(self):
         assert all([batch.weight <= self.batch_weight for batch in self.batches.values()])
@@ -43,8 +49,10 @@ class SolutionTester(SimulatedAnnealingMixed):
 
 if __name__ == "__main__":
     st = SolutionTester()
-    # st.reduced_vns(130, 50, 3)
-    st.simulatedAnnealing()
+    st.perform_ils(150, 80)
+    #st.reduced_vns(100, 80, 3)
+    # st.simulatedAnnealing()
+    #st.perform_ils(30, 50)
     st.count_num_requested_items()
     st.weight_test()
     st.capacity_test()
