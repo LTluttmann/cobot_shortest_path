@@ -1,0 +1,493 @@
+<?xml version="1.0" ?>
+<root>
+   <Collecting>
+      <Split>
+         <PackStation ID="OutD0">
+            <Batch ID="1">
+               <Order>3</Order>
+               <Order>11</Order>
+               <Order>14</Order>
+            </Batch>
+            <Batch ID="6">
+               <Order>1</Order>
+               <Order>6</Order>
+            </Batch>
+            <Batch ID="4">
+               <Order>16</Order>
+            </Batch>
+         </PackStation>
+         <PackStation ID="OutD1">
+            <Batch ID="0">
+               <Order>0</Order>
+               <Order>4</Order>
+               <Order>19</Order>
+            </Batch>
+            <Batch ID="2">
+               <Order>8</Order>
+               <Order>17</Order>
+            </Batch>
+            <Batch ID="3">
+               <Order>7</Order>
+               <Order>10</Order>
+               <Order>15</Order>
+               <Order>18</Order>
+            </Batch>
+            <Batch ID="5">
+               <Order>2</Order>
+            </Batch>
+            <Batch ID="7">
+               <Order>5</Order>
+               <Order>9</Order>
+            </Batch>
+            <Batch ID="8">
+               <Order>13</Order>
+            </Batch>
+         </PackStation>
+      </Split>
+      <PackStations>
+         <PackStation ID="OutD0">
+            <Batch BatchNumber="1" Distance="23.5">
+               <ItemsData>
+                  <Orders>
+                     <Order ID="0"/>
+                     <Order ID="1"/>
+                     <Order ID="2"/>
+                     <Order ID="3">
+                        <Item ID="6" Pod="1" Type="blue/c"/>
+                        <Item ID="8" Pod="0" Type="red/c"/>
+                        <Item ID="8" Pod="0" Type="red/c"/>
+                        <Item ID="8" Pod="0" Type="red/c"/>
+                        <Item ID="1" Pod="7" Type="green/a"/>
+                        <Item ID="6" Pod="1" Type="blue/c"/>
+                        <Item ID="6" Pod="1" Type="blue/c"/>
+                        <Item ID="8" Pod="0" Type="red/c"/>
+                     </Order>
+                     <Order ID="4"/>
+                     <Order ID="5"/>
+                     <Order ID="6"/>
+                     <Order ID="7"/>
+                     <Order ID="8"/>
+                     <Order ID="9"/>
+                     <Order ID="10"/>
+                     <Order ID="11">
+                        <Item ID="8" Pod="0" Type="red/c"/>
+                        <Item ID="8" Pod="0" Type="red/c"/>
+                        <Item ID="8" Pod="0" Type="red/c"/>
+                        <Item ID="8" Pod="0" Type="red/c"/>
+                     </Order>
+                     <Order ID="13"/>
+                     <Order ID="14">
+                        <Item ID="6" Pod="1" Type="blue/c"/>
+                        <Item ID="5" Pod="3" Type="red/b"/>
+                        <Item ID="5" Pod="3" Type="red/b"/>
+                        <Item ID="2" Pod="1" Type="red/a"/>
+                        <Item ID="8" Pod="0" Type="red/c"/>
+                        <Item ID="8" Pod="0" Type="red/c"/>
+                        <Item ID="8" Pod="0" Type="red/c"/>
+                        <Item ID="6" Pod="1" Type="blue/c"/>
+                        <Item ID="6" Pod="1" Type="blue/c"/>
+                        <Item ID="8" Pod="0" Type="red/c"/>
+                     </Order>
+                     <Order ID="15"/>
+                     <Order ID="16"/>
+                     <Order ID="17"/>
+                     <Order ID="18"/>
+                     <Order ID="19"/>
+                  </Orders>
+               </ItemsData>
+               <Edges>
+                  <Edge EndNode="0" StartNode="OutD0"/>
+                  <Edge EndNode="7" StartNode="0"/>
+                  <Edge EndNode="3" StartNode="7"/>
+                  <Edge EndNode="1" StartNode="3"/>
+                  <Edge EndNode="OutD0" StartNode="1"/>
+               </Edges>
+            </Batch>
+            <Batch BatchNumber="6" Distance="23.5">
+               <ItemsData>
+                  <Orders>
+                     <Order ID="0"/>
+                     <Order ID="1">
+                        <Item ID="4" Pod="1" Type="green/b"/>
+                        <Item ID="5" Pod="3" Type="red/b"/>
+                        <Item ID="6" Pod="8" Type="blue/c"/>
+                        <Item ID="6" Pod="8" Type="blue/c"/>
+                        <Item ID="6" Pod="8" Type="blue/c"/>
+                        <Item ID="4" Pod="2" Type="green/b"/>
+                        <Item ID="2" Pod="1" Type="red/a"/>
+                        <Item ID="2" Pod="1" Type="red/a"/>
+                        <Item ID="5" Pod="3" Type="red/b"/>
+                        <Item ID="5" Pod="3" Type="red/b"/>
+                        <Item ID="7" Pod="1" Type="green/c"/>
+                        <Item ID="1" Pod="7" Type="green/a"/>
+                     </Order>
+                     <Order ID="2"/>
+                     <Order ID="3"/>
+                     <Order ID="4"/>
+                     <Order ID="5"/>
+                     <Order ID="6">
+                        <Item ID="0" Pod="6" Type="blue/a"/>
+                        <Item ID="4" Pod="1" Type="green/b"/>
+                        <Item ID="5" Pod="3" Type="red/b"/>
+                        <Item ID="4" Pod="2" Type="green/b"/>
+                        <Item ID="5" Pod="3" Type="red/b"/>
+                        <Item ID="5" Pod="3" Type="red/b"/>
+                     </Order>
+                     <Order ID="7"/>
+                     <Order ID="8"/>
+                     <Order ID="9"/>
+                     <Order ID="10"/>
+                     <Order ID="11"/>
+                     <Order ID="13"/>
+                     <Order ID="14"/>
+                     <Order ID="15"/>
+                     <Order ID="16"/>
+                     <Order ID="17"/>
+                     <Order ID="18"/>
+                     <Order ID="19"/>
+                  </Orders>
+               </ItemsData>
+               <Edges>
+                  <Edge EndNode="7" StartNode="OutD0"/>
+                  <Edge EndNode="2" StartNode="7"/>
+                  <Edge EndNode="8" StartNode="2"/>
+                  <Edge EndNode="3" StartNode="8"/>
+                  <Edge EndNode="1" StartNode="3"/>
+                  <Edge EndNode="6" StartNode="1"/>
+                  <Edge EndNode="OutD0" StartNode="6"/>
+               </Edges>
+            </Batch>
+            <Batch BatchNumber="4" Distance="19.9">
+               <ItemsData>
+                  <Orders>
+                     <Order ID="0"/>
+                     <Order ID="1"/>
+                     <Order ID="2"/>
+                     <Order ID="3"/>
+                     <Order ID="4"/>
+                     <Order ID="5"/>
+                     <Order ID="6"/>
+                     <Order ID="7"/>
+                     <Order ID="8"/>
+                     <Order ID="9"/>
+                     <Order ID="10"/>
+                     <Order ID="11"/>
+                     <Order ID="13"/>
+                     <Order ID="14"/>
+                     <Order ID="15"/>
+                     <Order ID="16">
+                        <Item ID="0" Pod="6" Type="blue/a"/>
+                        <Item ID="1" Pod="7" Type="green/a"/>
+                        <Item ID="1" Pod="7" Type="green/a"/>
+                        <Item ID="8" Pod="0" Type="red/c"/>
+                     </Order>
+                     <Order ID="17"/>
+                     <Order ID="18"/>
+                     <Order ID="19"/>
+                  </Orders>
+               </ItemsData>
+               <Edges>
+                  <Edge EndNode="0" StartNode="OutD0"/>
+                  <Edge EndNode="7" StartNode="0"/>
+                  <Edge EndNode="6" StartNode="7"/>
+                  <Edge EndNode="OutD0" StartNode="6"/>
+               </Edges>
+            </Batch>
+         </PackStation>
+         <PackStation ID="OutD1">
+            <Batch BatchNumber="0" Distance="26.1">
+               <ItemsData>
+                  <Orders>
+                     <Order ID="0">
+                        <Item ID="6" Pod="22" Type="blue/c"/>
+                        <Item ID="3" Pod="17" Type="blue/b"/>
+                        <Item ID="3" Pod="17" Type="blue/b"/>
+                        <Item ID="6" Pod="14" Type="blue/c"/>
+                        <Item ID="6" Pod="14" Type="blue/c"/>
+                        <Item ID="3" Pod="17" Type="blue/b"/>
+                     </Order>
+                     <Order ID="1"/>
+                     <Order ID="2"/>
+                     <Order ID="3"/>
+                     <Order ID="4">
+                        <Item ID="4" Pod="14" Type="green/b"/>
+                        <Item ID="5" Pod="16" Type="red/b"/>
+                        <Item ID="5" Pod="16" Type="red/b"/>
+                        <Item ID="4" Pod="14" Type="green/b"/>
+                     </Order>
+                     <Order ID="5"/>
+                     <Order ID="6"/>
+                     <Order ID="7"/>
+                     <Order ID="8"/>
+                     <Order ID="9"/>
+                     <Order ID="10"/>
+                     <Order ID="11"/>
+                     <Order ID="13"/>
+                     <Order ID="14"/>
+                     <Order ID="15"/>
+                     <Order ID="16"/>
+                     <Order ID="17"/>
+                     <Order ID="18"/>
+                     <Order ID="19">
+                        <Item ID="6" Pod="22" Type="blue/c"/>
+                        <Item ID="3" Pod="17" Type="blue/b"/>
+                        <Item ID="3" Pod="17" Type="blue/b"/>
+                        <Item ID="4" Pod="14" Type="green/b"/>
+                        <Item ID="5" Pod="16" Type="red/b"/>
+                        <Item ID="7" Pod="21" Type="green/c"/>
+                        <Item ID="7" Pod="21" Type="green/c"/>
+                        <Item ID="6" Pod="14" Type="blue/c"/>
+                        <Item ID="6" Pod="14" Type="blue/c"/>
+                        <Item ID="5" Pod="16" Type="red/b"/>
+                        <Item ID="4" Pod="14" Type="green/b"/>
+                        <Item ID="3" Pod="17" Type="blue/b"/>
+                        <Item ID="8" Pod="14" Type="red/c"/>
+                     </Order>
+                  </Orders>
+               </ItemsData>
+               <Edges>
+                  <Edge EndNode="17" StartNode="OutD1"/>
+                  <Edge EndNode="16" StartNode="17"/>
+                  <Edge EndNode="21" StartNode="16"/>
+                  <Edge EndNode="14" StartNode="21"/>
+                  <Edge EndNode="22" StartNode="14"/>
+                  <Edge EndNode="OutD1" StartNode="22"/>
+               </Edges>
+            </Batch>
+            <Batch BatchNumber="2" Distance="26.1">
+               <ItemsData>
+                  <Orders>
+                     <Order ID="0"/>
+                     <Order ID="1"/>
+                     <Order ID="2"/>
+                     <Order ID="3"/>
+                     <Order ID="4"/>
+                     <Order ID="5"/>
+                     <Order ID="6"/>
+                     <Order ID="7"/>
+                     <Order ID="8">
+                        <Item ID="5" Pod="16" Type="red/b"/>
+                        <Item ID="4" Pod="14" Type="green/b"/>
+                        <Item ID="1" Pod="16" Type="green/a"/>
+                     </Order>
+                     <Order ID="9"/>
+                     <Order ID="10"/>
+                     <Order ID="11"/>
+                     <Order ID="13"/>
+                     <Order ID="14"/>
+                     <Order ID="15"/>
+                     <Order ID="16"/>
+                     <Order ID="17">
+                        <Item ID="0" Pod="23" Type="blue/a"/>
+                        <Item ID="8" Pod="14" Type="red/c"/>
+                        <Item ID="3" Pod="23" Type="blue/b"/>
+                        <Item ID="2" Pod="14" Type="red/a"/>
+                        <Item ID="2" Pod="14" Type="red/a"/>
+                        <Item ID="7" Pod="21" Type="green/c"/>
+                     </Order>
+                     <Order ID="18"/>
+                     <Order ID="19"/>
+                  </Orders>
+               </ItemsData>
+               <Edges>
+                  <Edge EndNode="23" StartNode="OutD1"/>
+                  <Edge EndNode="21" StartNode="23"/>
+                  <Edge EndNode="14" StartNode="21"/>
+                  <Edge EndNode="16" StartNode="14"/>
+                  <Edge EndNode="OutD1" StartNode="16"/>
+               </Edges>
+            </Batch>
+            <Batch BatchNumber="3" Distance="24.3">
+               <ItemsData>
+                  <Orders>
+                     <Order ID="0"/>
+                     <Order ID="1"/>
+                     <Order ID="2"/>
+                     <Order ID="3"/>
+                     <Order ID="4"/>
+                     <Order ID="5"/>
+                     <Order ID="6"/>
+                     <Order ID="7">
+                        <Item ID="3" Pod="17" Type="blue/b"/>
+                        <Item ID="8" Pod="15" Type="red/c"/>
+                        <Item ID="1" Pod="17" Type="green/a"/>
+                        <Item ID="8" Pod="15" Type="red/c"/>
+                        <Item ID="3" Pod="17" Type="blue/b"/>
+                        <Item ID="3" Pod="17" Type="blue/b"/>
+                     </Order>
+                     <Order ID="8"/>
+                     <Order ID="9"/>
+                     <Order ID="10">
+                        <Item ID="3" Pod="17" Type="blue/b"/>
+                        <Item ID="3" Pod="17" Type="blue/b"/>
+                        <Item ID="3" Pod="17" Type="blue/b"/>
+                        <Item ID="7" Pod="21" Type="green/c"/>
+                        <Item ID="2" Pod="22" Type="red/a"/>
+                     </Order>
+                     <Order ID="11"/>
+                     <Order ID="13"/>
+                     <Order ID="14"/>
+                     <Order ID="15">
+                        <Item ID="5" Pod="16" Type="red/b"/>
+                     </Order>
+                     <Order ID="16"/>
+                     <Order ID="17"/>
+                     <Order ID="18">
+                        <Item ID="3" Pod="17" Type="blue/b"/>
+                        <Item ID="8" Pod="15" Type="red/c"/>
+                        <Item ID="8" Pod="15" Type="red/c"/>
+                        <Item ID="3" Pod="17" Type="blue/b"/>
+                        <Item ID="6" Pod="15" Type="blue/c"/>
+                        <Item ID="6" Pod="15" Type="blue/c"/>
+                        <Item ID="6" Pod="15" Type="blue/c"/>
+                        <Item ID="3" Pod="17" Type="blue/b"/>
+                     </Order>
+                     <Order ID="19"/>
+                  </Orders>
+               </ItemsData>
+               <Edges>
+                  <Edge EndNode="17" StartNode="OutD1"/>
+                  <Edge EndNode="22" StartNode="17"/>
+                  <Edge EndNode="16" StartNode="22"/>
+                  <Edge EndNode="21" StartNode="16"/>
+                  <Edge EndNode="15" StartNode="21"/>
+                  <Edge EndNode="OutD1" StartNode="15"/>
+               </Edges>
+            </Batch>
+            <Batch BatchNumber="5" Distance="26.1">
+               <ItemsData>
+                  <Orders>
+                     <Order ID="0"/>
+                     <Order ID="1"/>
+                     <Order ID="2">
+                        <Item ID="1" Pod="17" Type="green/a"/>
+                        <Item ID="1" Pod="17" Type="green/a"/>
+                        <Item ID="8" Pod="15" Type="red/c"/>
+                        <Item ID="8" Pod="15" Type="red/c"/>
+                        <Item ID="3" Pod="17" Type="blue/b"/>
+                        <Item ID="0" Pod="23" Type="blue/a"/>
+                        <Item ID="4" Pod="14" Type="green/b"/>
+                        <Item ID="5" Pod="16" Type="red/b"/>
+                        <Item ID="2" Pod="14" Type="red/a"/>
+                     </Order>
+                     <Order ID="3"/>
+                     <Order ID="4"/>
+                     <Order ID="5"/>
+                     <Order ID="6"/>
+                     <Order ID="7"/>
+                     <Order ID="8"/>
+                     <Order ID="9"/>
+                     <Order ID="10"/>
+                     <Order ID="11"/>
+                     <Order ID="13"/>
+                     <Order ID="14"/>
+                     <Order ID="15"/>
+                     <Order ID="16"/>
+                     <Order ID="17"/>
+                     <Order ID="18"/>
+                     <Order ID="19"/>
+                  </Orders>
+               </ItemsData>
+               <Edges>
+                  <Edge EndNode="23" StartNode="OutD1"/>
+                  <Edge EndNode="17" StartNode="23"/>
+                  <Edge EndNode="16" StartNode="17"/>
+                  <Edge EndNode="14" StartNode="16"/>
+                  <Edge EndNode="15" StartNode="14"/>
+                  <Edge EndNode="OutD1" StartNode="15"/>
+               </Edges>
+            </Batch>
+            <Batch BatchNumber="7" Distance="22.5">
+               <ItemsData>
+                  <Orders>
+                     <Order ID="0"/>
+                     <Order ID="1"/>
+                     <Order ID="2"/>
+                     <Order ID="3"/>
+                     <Order ID="4"/>
+                     <Order ID="5">
+                        <Item ID="6" Pod="22" Type="blue/c"/>
+                        <Item ID="6" Pod="22" Type="blue/c"/>
+                        <Item ID="5" Pod="16" Type="red/b"/>
+                        <Item ID="6" Pod="22" Type="blue/c"/>
+                        <Item ID="6" Pod="22" Type="blue/c"/>
+                        <Item ID="3" Pod="17" Type="blue/b"/>
+                        <Item ID="3" Pod="17" Type="blue/b"/>
+                        <Item ID="0" Pod="23" Type="blue/a"/>
+                     </Order>
+                     <Order ID="6"/>
+                     <Order ID="7"/>
+                     <Order ID="8"/>
+                     <Order ID="9">
+                        <Item ID="6" Pod="22" Type="blue/c"/>
+                        <Item ID="6" Pod="22" Type="blue/c"/>
+                        <Item ID="2" Pod="22" Type="red/a"/>
+                        <Item ID="6" Pod="22" Type="blue/c"/>
+                        <Item ID="6" Pod="22" Type="blue/c"/>
+                     </Order>
+                     <Order ID="10"/>
+                     <Order ID="11"/>
+                     <Order ID="13"/>
+                     <Order ID="14"/>
+                     <Order ID="15"/>
+                     <Order ID="16"/>
+                     <Order ID="17"/>
+                     <Order ID="18"/>
+                     <Order ID="19"/>
+                  </Orders>
+               </ItemsData>
+               <Edges>
+                  <Edge EndNode="23" StartNode="OutD1"/>
+                  <Edge EndNode="17" StartNode="23"/>
+                  <Edge EndNode="16" StartNode="17"/>
+                  <Edge EndNode="22" StartNode="16"/>
+                  <Edge EndNode="OutD1" StartNode="22"/>
+               </Edges>
+            </Batch>
+            <Batch BatchNumber="8" Distance="23.5">
+               <ItemsData>
+                  <Orders>
+                     <Order ID="0"/>
+                     <Order ID="1"/>
+                     <Order ID="2"/>
+                     <Order ID="3"/>
+                     <Order ID="4"/>
+                     <Order ID="5"/>
+                     <Order ID="6"/>
+                     <Order ID="7"/>
+                     <Order ID="8"/>
+                     <Order ID="9"/>
+                     <Order ID="10"/>
+                     <Order ID="11"/>
+                     <Order ID="13">
+                        <Item ID="4" Pod="2" Type="green/b"/>
+                        <Item ID="4" Pod="2" Type="green/b"/>
+                        <Item ID="1" Pod="9" Type="green/a"/>
+                        <Item ID="1" Pod="9" Type="green/a"/>
+                        <Item ID="8" Pod="8" Type="red/c"/>
+                        <Item ID="8" Pod="8" Type="red/c"/>
+                        <Item ID="2" Pod="3" Type="red/a"/>
+                        <Item ID="6" Pod="8" Type="blue/c"/>
+                        <Item ID="5" Pod="3" Type="red/b"/>
+                        <Item ID="7" Pod="3" Type="green/c"/>
+                     </Order>
+                     <Order ID="14"/>
+                     <Order ID="15"/>
+                     <Order ID="16"/>
+                     <Order ID="17"/>
+                     <Order ID="18"/>
+                     <Order ID="19"/>
+                  </Orders>
+               </ItemsData>
+               <Edges>
+                  <Edge EndNode="3" StartNode="OutD1"/>
+                  <Edge EndNode="9" StartNode="3"/>
+                  <Edge EndNode="8" StartNode="9"/>
+                  <Edge EndNode="2" StartNode="8"/>
+                  <Edge EndNode="OutD1" StartNode="2"/>
+               </Edges>
+            </Batch>
+         </PackStation>
+      </PackStations>
+   </Collecting>
+</root>
