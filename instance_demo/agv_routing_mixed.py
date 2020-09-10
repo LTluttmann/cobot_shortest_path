@@ -713,7 +713,7 @@ class SimulatedAnnealingMixed(GreedyMixedShelves):
                     batch.pack_station = self.switch_stations(batch)
                     self.greedy_cobot_tour(batch)  # recalculate the greedy tour with new pack station
                 if len(batch.route) > 1:
-                    made_change = self.two_opt_randomized(batch, currentSolution, batch_id, T)
+                    made_change = self.two_opt(batch, currentSolution, batch_id, T)
                     it_without_change += 1 if not made_change else 0
                     T *= alpha
                     iteration += 1
@@ -929,7 +929,7 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         history = None
         while iter < num_iters and t < t_max:
             history = self.perturbation(history)
-            self.local_search(7)
+            self.local_search()
             neighbor_fit = self.get_fitness_of_solution()
             print("perturbation: curr fit: {}; cand fit {}".format(curr_fit, neighbor_fit))
             if neighbor_fit < curr_fit or self.acceptWithProbability(neighbor_fit, curr_fit, T):
@@ -1034,11 +1034,12 @@ class VariableNeighborhoodSearch(IteratedLocalSearchMixed):
 
 
 if __name__ == "__main__":
-    SKUS = ["24"]  # options: 24 and 360
-    SUBSCRIPTS = [""]
-    NUM_ORDERSS = [10]  # [10,
-    MEANS = ["5"]
+    SKUS = ["24", "360"]  # options: 24 and 360
+    SUBSCRIPTS = ["", "_a", "_b"]
+    NUM_ORDERSS = [10, 20]  # [10,
+    MEANS = ["1x6", "5"]
     instance_sols = {}
+    model_sols = {}
     for SKU in SKUS:
         for SUBSCRIPT in SUBSCRIPTS:
             for NUM_ORDERS in NUM_ORDERSS:
@@ -1059,29 +1060,34 @@ if __name__ == "__main__":
                         orders = {}
                         orders['{}_5'.format(str(NUM_ORDERS))] = r'data/sku{}/orders_{}_mean_{}_sku_{}{}.xml'.format(SKU, str(NUM_ORDERS), MEAN, SKU, SUBSCRIPT)
                         sols_and_runtimes = {}
-                        runtimes = [40, 80, 140, 200]
-                        runtimes=[25]
+                        runtimes = [0, 4, 8, 13, 20, 30, 40, 50, 60, 80, 100, 120]
+                        runtimes=[200]
                         for runtime in runtimes:
                             np.random.seed(523381)
                             if runtime == 0:
                                 ils = GreedyMixedShelves()
                                 ils.apply_greedy_heuristic()
                             else:
-                                ils = VariableNeighborhoodSearch()
-                                ils.reduced_vns(1500, runtime, 2)
-                            STORAGE_STRATEGY = "dedicated" if ils.is_storage_dedicated else "mixed"
-                            print("Now optimizing: SKU={}; Order={}; Subscript={}".format(SKU, NUM_ORDERS, SUBSCRIPT))
-                            ils.write_solution_to_xml(
-                                'solutions/orders_{}_mean_{}_sku_{}{}_{}.xml'.format(str(NUM_ORDERS), MEAN, SKU,
-                                                                                     SUBSCRIPT, STORAGE_STRATEGY)
-                            )
-                            sols_and_runtimes[runtime] = (ils.get_fitness_of_solution(), {batch.ID: batch.route for
-                                                           batch in ils.batches.values()})
+                                ils = IteratedLocalSearchMixed()
+                                ils.perform_ils(num_iters=1500, t_max=runtime)
+                                #vns = VariableNeighborhoodSearch()
+                                #vns.reduced_vns(1500, runtime, 2)
+                            #STORAGE_STRATEGY = "dedicated" if vns.is_storage_dedicated else "mixed"
+                            #print("Now optimizing: SKU={}; Order={}; Subscript={}".format(SKU, NUM_ORDERS, SUBSCRIPT))
+                            #vns.write_solution_to_xml(
+                            #    'solutions/orders_{}_mean_{}_sku_{}{}_{}.xml'.format(str(NUM_ORDERS), MEAN, SKU,
+                            #                                                         SUBSCRIPT, STORAGE_STRATEGY)
+                            #)
+                            #sols_and_runtimes[runtime] = (vns.get_fitness_of_solution(), {batch.ID: batch.route for
+                            #                               batch in vns.batches.values()})
                         print(sols_and_runtimes)
-                    except Exception as e:
-                        print(e)
+                        instance_sols[(SKU, SUBSCRIPT, NUM_ORDERS)] = sols_and_runtimes
+                        model_sols[(SKU, SUBSCRIPT, NUM_ORDERS, "ILS")] = ils.get_fitness_of_solution()
+                        #model_sols[(SKU, SUBSCRIPT, NUM_ORDERS, "VNS")] = vns.get_fitness_of_solution()
+                    except:
                         continue
-                    instance_sols[(SKU, SUBSCRIPT, NUM_ORDERS)] = sols_and_runtimes
 
-    with open('../analyse_solution/solutions/mixed16.pickle', 'wb') as handle:
-        pickle.dump(instance_sols, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    #with open('../analyse_solution/solutions/mixed360_random_ls_not_random_twoopt.pickle', 'wb') as handle:
+    #    pickle.dump(instance_sols, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    with open('../analyse_solution/solutions/mixed_fitness_ils_vns.pickle', 'wb') as handle:
+        pickle.dump(model_sols, handle, protocol=pickle.HIGHEST_PROTOCOL)
