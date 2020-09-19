@@ -782,15 +782,15 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         print("fitness after perturbation: ", self.get_fitness_of_solution())
         return history
 
-    def change_ps_of_order(self, ps_to_add_ordr_to=None):
+    def change_ps_of_order(self):
         print("changes orders")
         # if not ps_to_add_ordr_to:
         order_i = np.random.choice(list(self.warehouseInstance.Orders.keys()))
         first_order_ps = self.get_assigned_items_of_order(order_i)[0].ps
 
-        cand_orders = self.get_orders_assigned_to_station(np.random.choice(list(set(self.warehouseInstance.OutputStations.keys()).difference([first_order_ps]))))
+        cand_orders = self.get_orders_assigned_to_station(np.random.choice(np.setdiff1d(list(self.warehouseInstance.OutputStations.keys()), first_order_ps)))
         if not cand_orders:
-            cand_orders = list(set(self.warehouseInstance.Orders.keys()).difference(order_i))
+            cand_orders = np.setdiff1d(list(self.warehouseInstance.Orders.keys()), order_i)
         order_j = np.random.choice(cand_orders)
 
         items_of_orders = [item for order in [order_i, order_j] for item in self.get_assigned_items_of_order(order)]
@@ -806,6 +806,7 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                     self.batches[item.batch].route.remove(item.shelf)
             self.item_id_pod_id_dict[item.orig_ID][item.shelf] += 1
         # add items
+        just_changed=False
         for item in items_of_orders:
             new_ps = np.random.choice(np.setdiff1d(list(self.warehouseInstance.OutputStations.keys()), item.ps))
             batches = self.get_batches_for_station(new_ps)
@@ -818,6 +819,7 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                 batch_id = str(self.get_new_batch_id())
                 self.batches[batch_id] = BatchSplit(batch_id, new_ps, self.station_id_bot_id_dict[new_ps])
                 self.update_batches_from_new_item(item, batch_id)
+                just_changed=True
             else:
                 # choose the batch with maximum workload after assignment
                 new_batch_of_item = max(candidate_batches.keys(), key=(lambda k: candidate_batches[k]))
@@ -860,7 +862,7 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         # if no items can be exchanged return None
         return None, None
 
-    def randomized_local_search(self, max_iters=10, history=None):
+    def randomized_local_search(self, max_iters=15, history=None):
         """
         perform simple randomized swap of orders to batches. This is done for a given number of iterations on
         randomly drawn orders.
@@ -871,10 +873,10 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         curr_fit = self.get_fitness_of_solution()
         curr_sol = copy.deepcopy(self.batches)
         while iters < max_iters:
-            batch_i = np.random.choice([batch for key, batch in self.batches.items() if key != history])
-            cand_batch_j = [batch for key, batch in self.batches.items() if key != history and batch.ID != batch_i.ID and batch.pack_station == batch_i.pack_station]
+            batch_i = np.random.choice([batch for key, batch in self.batches.items()])  #if key != history
+            cand_batch_j = [batch for key, batch in self.batches.items() if batch.ID != batch_i.ID and batch.pack_station == batch_i.pack_station]
             if len(cand_batch_j) == 0:
-                self.change_ps_of_order(batch_i.pack_station)  # TODO irgenwas schlaues überlegen
+                self.change_ps_of_order()  # TODO irgenwas schlaues überlegen
                 continue
             else:
                 batch_j = np.random.choice(cand_batch_j)
@@ -903,10 +905,10 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         T = self.get_fitness_of_solution() * 0.02
         history = None
         while iter < num_iters and t < t_max:
-            if np.random.random() < 0.3:
+            if np.random.random() < 0.2:
                 self.change_ps_of_order()
             history = self.perturbation(history)
-            self.randomized_local_search(10)
+            self.randomized_local_search(15)
             neighbor_fit = self.get_fitness_of_solution()
             print("perturbation: curr fit: {}; cand fit {}".format(curr_fit, neighbor_fit))
             if neighbor_fit < curr_fit:  # or self.acceptWithProbability(neighbor_fit, curr_fit, T):
@@ -969,6 +971,7 @@ class VariableNeighborhoodSearch(IteratedLocalSearchMixed):
                 # choose the batch with maximum workload after assignment
                 new_batch_of_item = max(candidate_batches.keys(), key=(lambda k: candidate_batches[k]))
                 new_batch_of_order = np.random.choice(list(candidate_batches.keys()))
+                new_batch_of_item = min(candidate_batches.keys(), key=(lambda k: candidate_batches[k]))
                 self.update_batches_from_new_item(new_item=item, batch_id=new_batch_of_item)
         print("fitness after perturbation: ", self.get_fitness_of_solution())
 
