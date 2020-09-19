@@ -162,7 +162,6 @@ class BatchSplit:
         self.items = {}
         self.route = []
         self.weight = 0
-        self.order_item_hash = defaultdict(list)
 
     @property
     def items_of_shelves(self):
@@ -174,7 +173,6 @@ class BatchSplit:
     def add_item(self, item: ItemOfBatch):
         self.items[item.ID] = item
         self.weight += item.weight
-        self.order_item_hash[item.order].append(item)
         item.batch = self.ID
 
     def del_item(self, item: ItemOfBatch):
