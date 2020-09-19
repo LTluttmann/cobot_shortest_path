@@ -777,23 +777,26 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
             else:
                 # choose the batch with maximum workload after assignment
                 new_batch_of_item = max(candidate_batches.keys(), key=(lambda k: candidate_batches[k]))
-                new_batch_of_order = np.random.choice(list(candidate_batches.keys()))
+                new_batch_of_item = np.random.choice(list(candidate_batches.keys()))
                 self.update_batches_from_new_item(new_item=item, batch_id=new_batch_of_item)
         print("fitness after perturbation: ", self.get_fitness_of_solution())
         return history
 
     def change_ps_of_order(self, ps_to_add_ordr_to=None):
+        print("changes orders")
         # if not ps_to_add_ordr_to:
-        order_switch_station = np.random.choice(list(self.warehouseInstance.Orders.keys()))
-        self.get_assigned_items_of_order(order_switch_station)
-        else:
-            cand_orders = self.get_orders_assigned_to_station(np.random.choice(list(set(self.warehouseInstance.OutputStations.keys()).difference([ps_to_add_ordr_to]))))
-            order_switch_station = np.random.choice(cand_orders)
-        items_of_order = self.get_assigned_items_of_order(order_switch_station)
-        ps_of_order = items_of_order[0].ps
-        new_ps = np.random.choice(np.setdiff1d(list(self.warehouseInstance.OutputStations.keys()), ps_of_order))
-        batches = self.get_batches_for_station(new_ps)
-        for item in items_of_order:
+        order_i = np.random.choice(list(self.warehouseInstance.Orders.keys()))
+        first_order_ps = self.get_assigned_items_of_order(order_i)[0].ps
+
+        cand_orders = self.get_orders_assigned_to_station(np.random.choice(list(set(self.warehouseInstance.OutputStations.keys()).difference([first_order_ps]))))
+        if not cand_orders:
+            cand_orders = list(set(self.warehouseInstance.Orders.keys()).difference(order_i))
+        order_j = np.random.choice(cand_orders)
+
+        items_of_orders = [item for order in [order_i, order_j] for item in self.get_assigned_items_of_order(order)]
+
+        # delete items from current batches
+        for item in items_of_orders:
             self.batches[item.batch].del_item(item)
             if len(self.batches[item.batch].items) == 0:
                 self.batches.pop(item.batch)
@@ -801,21 +804,25 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                 shelves_of_batch = [item.shelf for item in self.batches[item.batch].items.values()]
                 if item.shelf not in shelves_of_batch:
                     self.batches[item.batch].route.remove(item.shelf)
-            item.ps = new_ps
             self.item_id_pod_id_dict[item.orig_ID][item.shelf] += 1
+        # add items
+        for item in items_of_orders:
+            new_ps = np.random.choice(np.setdiff1d(list(self.warehouseInstance.OutputStations.keys()), item.ps))
+            batches = self.get_batches_for_station(new_ps)
             candidate_batches = {}
             for batch in batches:
-                if item.weight + batch.weight <= self.batch_weight and batch.pack_station == item.ps:
+                if item.weight + batch.weight <= self.batch_weight: ## and batch.pack_station == item.ps:
                     candidate_batches[batch.ID] = item.weight + batch.weight
             if not candidate_batches:
+                print("create new batch")
                 batch_id = str(self.get_new_batch_id())
                 self.batches[batch_id] = BatchSplit(batch_id, new_ps, self.station_id_bot_id_dict[new_ps])
                 self.update_batches_from_new_item(item, batch_id)
-                batches = self.get_batches_for_station(new_ps)
             else:
                 # choose the batch with maximum workload after assignment
                 new_batch_of_item = max(candidate_batches.keys(), key=(lambda k: candidate_batches[k]))
                 self.update_batches_from_new_item(new_item=item, batch_id=new_batch_of_item)
+
 
     def replace_item(self, batch: BatchSplit, add_item: ItemOfBatch, remove_item: ItemOfBatch):
         """
@@ -896,13 +903,13 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         T = self.get_fitness_of_solution() * 0.02
         history = None
         while iter < num_iters and t < t_max:
-            if np.random.random() < 0.2:
+            if np.random.random() < 0.3:
                 self.change_ps_of_order()
             history = self.perturbation(history)
             self.randomized_local_search(10)
             neighbor_fit = self.get_fitness_of_solution()
             print("perturbation: curr fit: {}; cand fit {}".format(curr_fit, neighbor_fit))
-            if neighbor_fit < curr_fit: # or self.acceptWithProbability(neighbor_fit, curr_fit, T):
+            if neighbor_fit < curr_fit:  # or self.acceptWithProbability(neighbor_fit, curr_fit, T):
                 curr_fit = neighbor_fit  # accept new solution
                 curr_sol = copy.deepcopy(self.batches)
                 self.item_id_pod_id_dict_copy = copy.deepcopy(self.item_id_pod_id_dict)
@@ -1007,7 +1014,7 @@ class VariableNeighborhoodSearch(IteratedLocalSearchMixed):
 
 if __name__ == "__main__":
     SKUS = ["24"]  # options: 24 and 360
-    SUBSCRIPTS = ["_a"]
+    SUBSCRIPTS = [""]
     NUM_ORDERSS = [10]  # [10,
     MEANS = ["5"]
     instance_sols = {}
@@ -1041,8 +1048,8 @@ if __name__ == "__main__":
                             ils.apply_greedy_heuristic()
                         else:
                             vns = VariableNeighborhoodSearch()
-                            #vns.perform_ils(num_iters=1500, t_max=runtime)
-                            vns.reduced_vns(1500, runtime, 2)
+                            vns.perform_ils(num_iters=1500, t_max=runtime)
+                            #vns.reduced_vns(1500, runtime, 2)
                     print(sols_and_runtimes)
                     instance_sols[(SKU, SUBSCRIPT, NUM_ORDERS)] = sols_and_runtimes
                     model_sols[(SKU, SUBSCRIPT, NUM_ORDERS, MEAN, "ILS")] = vns.get_fitness_of_solution()
