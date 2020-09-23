@@ -4,6 +4,7 @@ storage policy
 """
 
 # example to use
+import warnings
 import numpy as np
 import xml.etree.cElementTree as ET
 import networkx as nx
@@ -285,10 +286,12 @@ class Demo():
         shelf2 = self.item_id_pod_id_dict[item2]
         return self.distance_ij[shelf1, shelf2]
 
-    def get_fitness_of_batch(self, batch: BatchNew):
+    def get_fitness_of_batch(self, batch: BatchSplit):
         """
         getter for the distance between items. Must first retrieve the shelf the items are stored in
         """
+        if len(batch.route) == 0:
+            return 0
         distances = []
         distances.append(self.distance_ij[batch.pack_station, batch.route[0]])
         for first, second in zip(batch.route, batch.route[1:]):
@@ -407,7 +410,6 @@ class GreedyMixedShelves(Demo):
                 for shelf in shelves_with_item:
                     shelf_distances[shelf] = self.distance_ij[pack_station, shelf]
                 shelf_with_min_dist = min(shelf_distances.keys(), key=(lambda k: shelf_distances[k]))
-                self.item_id_pod_id_dict[item_id][shelf_with_min_dist] -= 1
                 item_dists.append(shelf_distances[shelf_with_min_dist])
             order_pack_dists[pack_station] = np.sum(item_dists)
         return min(order_pack_dists.keys(), key=(lambda k: order_pack_dists[k]))
@@ -422,7 +424,6 @@ class GreedyMixedShelves(Demo):
         for order_id, order in self.warehouseInstance.Orders.items():
             station_of_order = self.get_station_with_min_total_distance(order_id)
             orders_of_stations[station_of_order].append(order_id)
-        self.item_id_pod_id_dict = copy.deepcopy(self.item_id_pod_id_dict_orig)
         return orders_of_stations
 
     def greedy_next_order_to_batch(self, batch: BatchSplit, already_assigned, items_of_station, forbidden=None) -> ItemOfBatch:
@@ -605,13 +606,16 @@ class GreedyMixedShelves(Demo):
             self.batches = dict()
         for pack_station in self.warehouseInstance.OutputStations.keys():
             self.assign_items_to_batches_greedy(pack_station)
+            print(sum([stock for item in self.item_id_pod_id_dict.keys()
+                                     for stock in self.item_id_pod_id_dict[item].values()]))
 
 
 class SimulatedAnnealingMixed(GreedyMixedShelves):
     def __init__(self):
         super(SimulatedAnnealingMixed, self).__init__()
+        self.apply_greedy_heuristic()
 
-    def accept(self, curr_batch: BatchNew, candidate_batch: BatchNew, T):
+    def accept(self, curr_batch: BatchSplit, candidate_batch: BatchSplit, T):
         """
         determines whether a candidate solution is to be accepted or not
         :param curr_batch: batch from current solution which is to be improved
@@ -630,7 +634,7 @@ class SimulatedAnnealingMixed(GreedyMixedShelves):
         # Accept the new tour for all cases where fitness of candidate => fitness current with a probability
         return math.exp(-abs(candidateFitness - currentFitness) / T)
 
-    def two_opt(self, batch: BatchNew, currentSolution, batch_id, T):
+    def two_opt(self, batch: BatchSplit, currentSolution, batch_id, T):
         """
         implements the two opt heuristic. The algorithm iterates over every pair of edges of the tour and interchanges
         them.
@@ -659,7 +663,7 @@ class SimulatedAnnealingMixed(GreedyMixedShelves):
                     continue
         return False
 
-    def two_opt_randomized(self, batch: BatchNew, currentSolution, batch_id, T):
+    def two_opt_randomized(self, batch: BatchSplit, currentSolution, batch_id, T):
         """
         randomized version of two-opt in order to speed the local search up. Randomly selects to edges
         """
@@ -678,7 +682,7 @@ class SimulatedAnnealingMixed(GreedyMixedShelves):
             batch.route = curr_tour
             return False
 
-    def switch_stations(self, batch: BatchNew):
+    def switch_stations(self, batch: BatchSplit):
         """
         vary the pack station of batches
         :return:
@@ -729,6 +733,28 @@ class SimulatedAnnealingMixed(GreedyMixedShelves):
 
 
 class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
+
+    @staticmethod
+    def kk(number_list):  # Karmarkar-Karp heuristic, adopted and adapted from partition package
+        pairs = LifoQueue()
+        group1, group2 = [], []
+        heap = [(-1 * i.weight, i.ID) for i in number_list]
+        heapq.heapify(heap)
+        while len(heap) > 1:
+            i, labeli = heapq.heappop(heap)
+            j, labelj = heapq.heappop(heap)
+            pairs.put((labeli, labelj))
+            heapq.heappush(heap, (i - j, labeli))
+        group1.append(heapq.heappop(heap)[1])
+
+        while not pairs.empty():
+            pair = pairs.get()
+            if pair[0] in group1:
+                group2.append(pair[1])
+            elif pair[0] in group2:
+                group1.append(pair[1])
+        return group1, group2
+
     def __init__(self):
         super(IteratedLocalSearchMixed, self).__init__()
         self.simulatedAnnealing()  # get initial solution
@@ -811,6 +837,7 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         just_changed=False
         for item in items_of_orders:
             new_ps = np.random.choice(np.setdiff1d(list(self.warehouseInstance.OutputStations.keys()), item.ps))
+            item.ps = new_ps
             batches = self.get_batches_for_station(new_ps)
             candidate_batches = {}
             for batch in batches:
@@ -824,20 +851,44 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                 just_changed=True
             else:
                 # choose the batch with maximum workload after assignment
-                new_batch_of_item = max(candidate_batches.keys(), key=(lambda k: candidate_batches[k]))
+                new_batch_of_item = min(candidate_batches.keys(), key=(lambda k: candidate_batches[k]))
                 self.update_batches_from_new_item(new_item=item, batch_id=new_batch_of_item)
 
-    def replace_item(self, batch: BatchSplit, add_item: ItemOfBatch, remove_item: ItemOfBatch):
+    def replace_item(self, batch_i: BatchSplit, batch_j: BatchSplit, item_i: ItemOfBatch, item_j: ItemOfBatch):
         """
         does all the necessary updating when a order is replaced with another. This includes optimizing the tour through
         greedy and simulated annealing heuristics
         """
-        batch.del_item(remove_item)
-        batch.add_item(add_item)
-        self.greedy_cobot_tour(batch)  # optimize tour to accurately validate the change in fitness
-        self.simulatedAnnealing(batch_id=batch.ID, mutation_prob=0.2)
+        batch_i.del_item(item_i)
+        batch_j.del_item(item_j)
 
-    def determine_switchable_items_randomized(self, batch_i, batch_j):
+        batch_i.add_item(item_j)
+        self.greedy_cobot_tour(batch_i, item=item_j)  # optimize tour to accurately validate the change in fitness
+        assert batch_i is self.batches[batch_i.ID]
+        #self.simulatedAnnealing(batch_id=batch_i.ID)
+        assert batch_i is self.batches[batch_i.ID]
+        batch_j.add_item(item_i)
+        self.greedy_cobot_tour(batch_j, item=item_i)  # optimize tour to accurately validate the change in fitness
+        self.simulatedAnnealing(batch_id=batch_j.ID)
+
+
+    def exchange_item(self, batch_add: BatchSplit, batch_del: BatchSplit, item: ItemOfBatch):
+        """
+        does all the necessary updating when a order is replaced with another. This includes optimizing the tour through
+        greedy and simulated annealing heuristics
+        """
+        len_before = len(batch_add.items) + len(batch_del.items)
+        batch_del.del_item(item)
+        if len(batch_del.items) == 0:
+            self.batches.pop(batch_del.ID)
+        batch_add.add_item(item)
+        len_after = len(batch_add.items) + len(batch_del.items)
+        assert len_before == len_after
+        self.greedy_cobot_tour(batch_add, item=item)  # optimize tour to accurately validate the change in fitness
+        #self.simulatedAnnealing(batch_id=batch_add.ID)
+        #self.simulatedAnnealing(batch_id=batch_del.ID)
+
+    def determine_switchable_items_randomized(self, batch_i, batch_j, processed):
         """
         given two batches (batch ids), this function determines one order of each batch which can be exchanged between
         the batches (wrt to capacity restrictions).
@@ -845,14 +896,14 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         :param batch_j:
         :return:
         """
-        batch_i_items = list(batch_i.items.values())
-        batch_j_items = list(batch_j.items.values())
+        batch_i_items = [i for i in batch_i.items.values() if i.ID not in processed] #list(batch_i.items.values())  #
+        batch_j_items = [j for j in batch_j.items.values() if j.ID not in processed] #list(batch_j.items.values())  #
         np.random.shuffle(batch_i_items)
         np.random.shuffle(batch_j_items)
         for item_i in batch_i_items:
             for item_j in batch_j_items:
                 weight_diff = item_i.weight - item_j.weight
-                if weight_diff < 0:  # if the weight diff is negative item_j is heavier than item_i
+                if weight_diff <= 0:  # if the weight diff is negative item_j is heavier than item_i
                     # in this case we need to check if order_j still fits in batch_i
                     if abs(weight_diff) <= self.batch_weight - batch_i.weight:
                         return item_i, item_j  # if yes, return the orders --> switch will be performed
@@ -873,45 +924,28 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         iters = 0
         curr_fit = self.get_fitness_of_solution()
         curr_sol = copy.deepcopy(self.batches)
+        processed = []
         while iters < max_iters:
             batch_i = np.random.choice([batch for key, batch in self.batches.items()])  #if key != history
             cand_batch_j = [batch for key, batch in self.batches.items() if batch.ID != batch_i.ID and batch.pack_station == batch_i.pack_station]
             if len(cand_batch_j) == 0:
-                # self.change_ps_of_order()  # TODO irgenwas schlaues überlegen
+                #self.change_ps_of_order()  # TODO irgenwas schlaues überlegen
                 iters += 1
                 continue
             else:
                 batch_j = np.random.choice(cand_batch_j)
-            item_i, item_j = self.determine_switchable_items_randomized(batch_i, batch_j)
+            item_i, item_j = self.determine_switchable_items_randomized(batch_i, batch_j, processed)
             if item_i:
-                self.replace_item(batch_i, add_item=item_j, remove_item=item_i)
-                self.replace_item(batch_j, add_item=item_i, remove_item=item_j)
+                processed.extend([item_i.ID, item_j.ID])
+                self.replace_item(batch_i, batch_j, item_i, item_j)
+                self.local_search_shelves(batch_i)
+                self.local_search_shelves(batch_j)
                 if self.get_fitness_of_solution() < curr_fit or sum([len(b.route) for b in self.batches.values()]) < sum([len(b.route) for b in curr_sol.values()]):
                     curr_sol = copy.deepcopy(self.batches)
                     curr_fit = self.get_fitness_of_solution()
                 else:
                     self.batches = copy.deepcopy(curr_sol)
             iters += 1
-
-    def kk(self, number_list):  # Karmarkar-Karp heuristic, adopted and adapted from partition package
-        pairs = LifoQueue()
-        group1, group2 = [], []
-        heap = [(-1 * i.weight, i.ID) for i in number_list]
-        heapq.heapify(heap)
-        while len(heap) > 1:
-            i, labeli = heapq.heappop(heap)
-            j, labelj = heapq.heappop(heap)
-            pairs.put((labeli, labelj))
-            heapq.heappush(heap, (i - j, labeli))
-        group1.append(heapq.heappop(heap)[1])
-
-        while not pairs.empty():
-            pair = pairs.get()
-            if pair[0] in group1:
-                group2.append(pair[1])
-            elif pair[0] in group2:
-                group1.append(pair[1])
-        return group1, group2
 
     def optimized_perturbation(self):
         improvement = True
@@ -992,32 +1026,105 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                     self.batches.pop(inf_batch.ID)
         return improvement
 
-    def local_search_shelves(self):
-        for batch in self.batches.values():
-            if len(batch.items) / len(batch.route) < 2:
-                batch.route = []
-                self.replenish_shelves(batch)
-                assigned = []
-                while len(assigned) != len(batch.items):
-                    to_be_assigned = [item for item in batch.items.values() if item.ID not in [i.ID for i in assigned]]
-                    shelf_counts = Counter([shelf for item in to_be_assigned for shelf in item.shelves])
-                    top_shelf = max(shelf_counts.keys(), key=(lambda k: shelf_counts[k]))
-                    items_in_top_shelf = [item for item in to_be_assigned if top_shelf in item.shelves]
-                    for item in items_in_top_shelf:
-                        if self.item_id_pod_id_dict[item.orig_ID][top_shelf] > 0:
-                            item.shelf = top_shelf
-                            self.item_id_pod_id_dict[item.orig_ID][top_shelf] -= 1
-                            assigned.append(item)
-                    batch.route.append(top_shelf)
-                self.simulatedAnnealing(batch_id=batch.ID)
-            else:
-                continue
+    def local_search_shelves(self, batch: BatchSplit):
+        if len(batch.items) / len(batch.route) < 2 or len(batch.route) > 3:
+            curr_batch = copy.deepcopy(batch)
+            batch.route = []
+            item_id_pod_it_dict_copy = copy.deepcopy(self.item_id_pod_id_dict)
+            self.replenish_shelves(batch)
+            assigned = []
+            while len(assigned) != len(batch.items):
+                to_be_assigned = [item for item in batch.items.values() if item.ID not in [i.ID for i in assigned]]
+                shelf_counts = Counter([shelf for item in to_be_assigned for shelf in item.shelves if shelf not in batch.route])
+                top_shelf = max(shelf_counts.keys(), key=(lambda k: shelf_counts[k]))
+                items_in_top_shelf = [item for item in to_be_assigned if top_shelf in item.shelves]
+                for item in items_in_top_shelf:
+                    if self.item_id_pod_id_dict[item.orig_ID][top_shelf] > 0:
+                        item.shelf = top_shelf
+                        self.item_id_pod_id_dict[item.orig_ID][top_shelf] -= 1
+                        assigned.append(item)
+                batch.route.append(top_shelf)
+            self.simulatedAnnealing(batch_id=batch.ID)
+            if not self.get_fitness_of_batch(batch) < self.get_fitness_of_batch(curr_batch):
+                self.batches[batch.ID] = curr_batch  # rollback item shelf pods
+                self.item_id_pod_id_dict = item_id_pod_it_dict_copy
+
+    def check_for_exchangable_item(self, batch, item_to_exchange, candidate_batches: list):
+
+        batch_copy = copy.deepcopy(batch)
+        for batch2 in candidate_batches:
+            assert batch.ID != batch2.ID
+            batch2_copy = copy.deepcopy(batch2)
+            for item in batch2.items.values():
+                weight_diff = item_to_exchange.weight - item.weight
+                if weight_diff <= 0:  # if the weight diff is negative item_j is heavier than item_i
+                    # in this case we need to check if order_j still fits in batch_i
+                    if abs(weight_diff) <= self.batch_weight - batch.weight and \
+                            (len(np.intersect1d(item_to_exchange.shelves, batch2.route)) > 0) and \
+                            (len(np.intersect1d(item.shelves,
+                                                np.setdiff1d(batch.route, item_to_exchange.shelf))) > 0):
+                        # if yes, return the orders --> switch will be performed
+                        self.replace_item(batch_i=batch, batch_j=batch2, item_i=item_to_exchange, item_j=item)
+                        assert batch is self.batches[batch.ID]
+                        if not len(set([i for batch in self.batches.values() for i in batch.items.keys()])) == 50:
+                            pass
+                        return
+                elif weight_diff > 0:  # if the weight diff is positive order_i is heavier than order_j
+                    # in this case we need to check if order_i still fits in batch_j
+                    if (weight_diff <= self.batch_weight - batch2.weight) and \
+                            (len(np.intersect1d(item_to_exchange.shelves, batch2.route)) > 0) and \
+                            (len(np.intersect1d(item.shelves,
+                                                np.setdiff1d(batch.route, item_to_exchange.shelf))) > 0):
+                        self.replace_item(batch, batch2, item_to_exchange, item)
+                        assert batch is self.batches[batch.ID]
+                        if not len(set([i for batch in self.batches.values() for i in batch.items.keys()])) == 50:
+                            pass
+                        return
+
+    def replace_items_adding_node(self, batch: BatchSplit):
+
+        for items_of_shelf in list(batch.items_of_shelves.values()):
+            if len(items_of_shelf) == 1:
+                item_to_replace = items_of_shelf[0]
+                cand_batches = [cand_batch for cand_batch in self.batches.values() if
+                                cand_batch.pack_station == batch.pack_station and not cand_batch.ID == batch.ID
+                                and not len(cand_batch.items_of_shelves[item_to_replace.shelf]) == 1]
+                # if any([item_to_replace.weight + batch2.weight <= self.batch_weight for batch2 in cand_batches]):
+                #     batch2 = cand_batches[[item_to_replace.weight + batch2.weight <= self.batch_weight
+                #                            for batch2 in cand_batches].index(True)]
+                #     assert isinstance(batch2, BatchSplit)
+                #     assert len(set([i for batch in self.batches.values() for i in batch.items.keys()])) == 50
+                #     batch_copy = copy.deepcopy(batch)
+                #     batch2_copy = copy.deepcopy(batch2)
+                #     item_to_replace_copy = copy.deepcopy(item_to_replace)
+                #     batches_copy = copy.deepcopy(self.batches)
+                #     self.exchange_item(batch_add=batch2, batch_del=batch, item=item_to_replace)
+                #     print("da")
+                #     if not len(set([i for batch in self.batches.values() for i in batch.items.keys()])) == 50:
+                #         warnings.warn("""something wrong here: \n
+                #         batch_copy: {} \n batch: {} \n batch2_copy: {} \n batch2: {} \n
+                #         all batches: {}""".format(
+                #             [i.ID for i in batch_copy.items.values()],
+                #             [i.ID for i in batch.items.values()],
+                #             [i.ID for i in batch2_copy.items.values()],
+                #             [i.ID for i in batch2.items.values()],
+                #             [i for batch in self.batches.values() for i in batch.items.keys()])
+                #         )
+                #         assert len(set([i for batch in self.batches.values() for i in batch.items.keys()])) == 50
+                # else:
+                batch_copy = copy.deepcopy(batch)
+                item_to_replace_copy = copy.deepcopy(item_to_replace)
+
+                self.check_for_exchangable_item(batch, item_to_replace, cand_batches)
+                print("db with item {} and batch {}".format(item_to_replace.ID, batch.ID))
+
+                assert batch is self.batches[batch.ID]
+                assert len(set([i for batch in self.batches.values() for i in batch.items.keys()])) == 50
 
     def perform_ils(self, num_iters, t_max):
         """
         implements the Iterated Local Search
         """
-
         iter = 0
         starttime = time.time()
         t = time.time() - starttime
@@ -1028,26 +1135,36 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         item_id_pod_id_dict_copy = copy.deepcopy(self.item_id_pod_id_dict)
         T = self.get_fitness_of_solution() * 0.02
         history = None
+        iters_with_improved_bin_packing_but_not_fitness = 0
         while iter < num_iters and t < t_max:
-            #if np.random.random() < 0.2:
-            #    self.change_ps_of_order()
-            improvement = self.optimized_perturbation()
+            improvement = False
+            #if iters_with_improved_bin_packing_but_not_fitness < 2:
+                #improvement = self.optimized_perturbation()
             if not improvement:
+                if np.random.random() < 0.2:
+                    self.change_ps_of_order()
                 self.perturbation()
-            self.local_search_shelves()
-            self.randomized_local_search(15)
+            for batch in self.batches.values():
+                #  self.local_search_shelves(batch)
+                self.replace_items_adding_node(batch)
+            self.randomized_local_search(2)
+            assert len(set([i for batch in self.batches.values() for i in batch.items.keys()])) == 50
             neighbor_fit = self.get_fitness_of_solution()
             print("perturbation: curr fit: {}; cand fit {}".format(curr_fit, neighbor_fit))
-            if neighbor_fit < curr_fit or improvement:  # or self.acceptWithProbability(neighbor_fit, curr_fit, T):
+            if neighbor_fit < curr_fit:  # or improvement:  # or self.acceptWithProbability(neighbor_fit, curr_fit, T):
                 curr_fit = neighbor_fit  # accept new solution
                 curr_sol = copy.deepcopy(self.batches)
                 item_id_pod_id_dict_copy = copy.deepcopy(self.item_id_pod_id_dict)
                 if curr_fit < best_fit:
                     best_sol = copy.deepcopy(self.batches)
                     best_fit = self.get_fitness_of_solution()
+                if improvement:
+                    iters_with_improved_bin_packing_but_not_fitness = 0
             else:
                 self.batches = copy.deepcopy(curr_sol)  # don´t accept new solution and stick with the current one
                 self.item_id_pod_id_dict = copy.deepcopy(item_id_pod_id_dict_copy)
+                if improvement:
+                    iters_with_improved_bin_packing_but_not_fitness += 1
             iter += 1
             T *= 0.8
             t = time.time() - starttime
@@ -1143,7 +1260,7 @@ class VariableNeighborhoodSearch(IteratedLocalSearchMixed):
 
 if __name__ == "__main__":
     SKUS = ["24"]  # options: 24 and 360
-    SUBSCRIPTS = ["_b"]
+    SUBSCRIPTS = [""]
     NUM_ORDERSS = [10]  # [10,
     MEANS = ["5"]
     instance_sols = {}
@@ -1169,9 +1286,9 @@ if __name__ == "__main__":
                     orders['{}_5'.format(str(NUM_ORDERS))] = r'data/sku{}/orders_{}_mean_{}_sku_{}{}.xml'.format(SKU, str(NUM_ORDERS), MEAN, SKU, SUBSCRIPT)
                     sols_and_runtimes = {}
                     runtimes = [0, 4, 8, 13, 20, 30, 40, 50, 60, 80, 100, 120]
-                    runtimes = [45]
+                    runtimes = [1500]
                     for runtime in runtimes:
-                        np.random.seed(523381)
+                        np.random.seed(52302381)
                         if runtime == 0:
                             ils = GreedyMixedShelves()
                             ils.apply_greedy_heuristic()

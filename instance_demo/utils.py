@@ -171,12 +171,16 @@ class BatchSplit:
         return items_of_shelves
 
     def add_item(self, item: ItemOfBatch):
+        if item.ID in self.items.keys():
+            raise AssertionError
         self.items[item.ID] = item
         self.weight += item.weight
         item.batch = self.ID
 
     def del_item(self, item: ItemOfBatch):
         self.items.pop(item.ID)
+        if item.shelf not in self.items_of_shelves.keys():
+            self.route.remove(item.shelf)
         self.weight -= item.weight
 
     @property
