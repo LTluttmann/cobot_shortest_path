@@ -346,24 +346,22 @@ class Demo():
                     bt = ET.SubElement(ps, 'Batch')
                     bt.set('BatchNumber', batch.ID)
                     bt.set('Distance', str(self.get_fitness_of_batch(batch)))
+                    bt.set('Weight', str(batch.weight))
                     items_data = ET.SubElement(bt, "ItemsData")
-                    Ord = ET.SubElement(items_data, "Orders")
-                    for order_id, order in self.warehouseInstance.Orders.items():
-                        order_element = ET.SubElement(Ord, "Order")
-                        order_element.set("ID", order_id)
-                        if order_id in batch.orders:
+                    for item in [i for batch in self.batches.values() for i in batch.items.values()]:
+                        # item_element = ET.SubElement(Ord, "Item")
+                        # item_element.set("ID", item.ID)
+                        if item.ID in batch.items.keys():
                             # write orders to batches in summary of solution
-                            order_sum = ET.SubElement(bt_sum, "Order")
-                            order_sum.text = order_id
-                            for item in batch.items.values():
-                                if not item.orig_ID in order.Positions:
-                                    continue
-                                # write items their pod and type to the orders
-                                item_element = ET.SubElement(order_element, "Item")
-                                item_element.set("ID", item.orig_ID)
-                                item_element.set("Pod", item.shelf)
-                                item_desc = self.warehouseInstance.ItemDescriptions[item.orig_ID]
-                                item_element.set("Type", item_desc.Color + "/" + item_desc.Letter)
+                            item_sum = ET.SubElement(bt_sum, "Item")
+                            item_sum.text = item.ID
+                            # write items their pod and type to the orders
+                            item_element = ET.SubElement(items_data, "Item")
+                            item_element.set("ID", item.ID)
+                            item_element.set("Pods_available", item.shelves)
+                            item_element.set("Pod", item.shelf)
+                            item_desc = self.warehouseInstance.ItemDescriptions[item.orig_ID]
+                            item_element.set("Type", item_desc.Color + "/" + item_desc.Letter)
                     edges = ET.SubElement(bt, "Edges")
                     for edge in batch.edges:
                         edge_element = ET.SubElement(edges, "Edge")
@@ -1194,8 +1192,8 @@ class VariableNeighborhoodSearch(IteratedLocalSearchMixed):
 
 if __name__ == "__main__":
     SKUS = ["24"]  # options: 24 and 360
-    SUBSCRIPTS = [""]
-    NUM_ORDERSS = [20]  # [10,
+    SUBSCRIPTS = ["", "_a", "_b"]
+    NUM_ORDERSS = [10, 20]  # [10,
     MEANS = ["5"]
     instance_sols = {}
     model_sols = {}
@@ -1224,12 +1222,18 @@ if __name__ == "__main__":
                     for runtime in runtimes:
                         np.random.seed(52302381)
                         if runtime == 0:
-                            ils = GreedyMixedShelves()
-                            ils.apply_greedy_heuristic()
+                            vns = GreedyMixedShelves()
+                            vns.apply_greedy_heuristic()
                         else:
                             vns = VariableNeighborhoodSearch()
                             vns.perform_ils(num_iters=1500, t_max=runtime)
                             #vns.reduced_vns(1500, runtime, 2)
+                    STORAGE_STRATEGY = "dedicated" if vns.is_storage_dedicated else "mixed"
+                    print("Now optimizing: SKU={}; Order={}; Subscript={}".format(SKU, NUM_ORDERS, SUBSCRIPT))
+                    vns.write_solution_to_xml(
+                       'solutions/split_orders_{}_mean_{}_sku_{}{}_{}.xml'.format(str(NUM_ORDERS), MEAN, SKU,
+                                                                            SUBSCRIPT, STORAGE_STRATEGY)
+                    )
                     print(sols_and_runtimes)
                     instance_sols[(SKU, SUBSCRIPT, NUM_ORDERS)] = sols_and_runtimes
                     model_sols[(SKU, SUBSCRIPT, NUM_ORDERS, MEAN, "ILS")] = vns.get_fitness_of_solution()
