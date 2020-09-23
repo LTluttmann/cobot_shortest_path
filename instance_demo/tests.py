@@ -50,7 +50,7 @@ class SolutionTester(IteratedLocalSearchMixed):
 
 if __name__ == "__main__":
     st = SolutionTester()
-    st.perform_ils(150, 80)
+    st.perform_ils(20, 20)
     #st.reduced_vns(100, 80, 3)
     # st.simulatedAnnealing()
     #st.perform_ils(30, 50)
