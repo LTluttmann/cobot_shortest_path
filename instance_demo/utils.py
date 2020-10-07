@@ -43,7 +43,6 @@ class Batch:
                 edges.append(Edge(first, second))
         return edges
 
-
 class ItemOfOrder:
     def __init__(self, ID, orig_ID, shelves):
         self.ID = ID
@@ -97,6 +96,92 @@ class BatchNew:
         for item in order.items.values():
             self.items.pop(item.ID)
         self.weight -= order.weight
+
+    @property
+    def pack_station(self):
+        return self._pack_station
+
+    @pack_station.setter
+    def pack_station(self, val):
+        # counter = self.ID.split("_")[-1]
+        # self.ID = val + "_" + counter
+        self._pack_station = val
+
+    @property
+    def route(self):
+        return self._route
+
+    @route.setter
+    def route(self, val: list):
+        try:
+            edges = [val[0]]
+            for first, second in zip(val, val[1:]):
+                if first == second:
+                    continue
+                else:
+                    edges.append(second)
+            self._route = edges
+        except IndexError:
+            self._route = val
+
+    def route_insert(self, position, val, item):
+        self.route = self.route[:position] + [val] + self.route[position:]
+        self.items[item.ID].shelf = val
+
+    @property
+    def edges(self):
+        edges = []
+        route = self.route[:]
+        route.insert(0, self.pack_station)
+        route.append(self.pack_station)
+        for first, second in zip(route, route[1:]):
+            if first == second:
+                continue
+            else:
+                edges.append(Edge(first, second))
+        return edges
+
+
+class ItemOfBatch:
+    def __init__(self, ID, orig_ID, shelves, weight, pack_station, order):
+        self.ID = ID
+        self.orig_ID = orig_ID
+        self.shelves = shelves
+        self.shelf = None  # shelf where this item is going to be picked up
+        self.weight = weight
+        self.ps = pack_station
+        self.order = order
+        self.batch = None
+
+
+class BatchSplit:
+    def __init__(self, ID, pack_station, cobot=None):
+        self.ID = ID
+        self.cobot = cobot
+        self.pack_station = pack_station
+        self.items = {}
+        self.route = []
+        self.weight = 0
+
+    @property
+    def items_of_shelves(self):
+        items_of_shelves = defaultdict(list)
+        for item in self.items.values():
+            items_of_shelves[item.shelf].append(item)
+        return items_of_shelves
+
+    def add_item(self, item: ItemOfBatch):
+        if item.ID in self.items.keys():
+            raise AssertionError
+        self.items[item.ID] = item
+        self.weight += item.weight
+        item.batch = self.ID
+
+    def del_item(self, item: ItemOfBatch):
+        self.items.pop(item.ID)
+        if item.shelf not in self.items_of_shelves.keys():
+            self.route.remove(item.shelf)
+        self.weight -= item.weight
 
     @property
     def pack_station(self):

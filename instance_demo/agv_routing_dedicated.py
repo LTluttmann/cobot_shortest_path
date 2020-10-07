@@ -496,6 +496,7 @@ class GreedyHeuristic(Demo):
         for batch in self.batches.values():
             self.greedy_cobot_tour(batch)
 
+
 class SimulatedAnnealing(GreedyHeuristic):
     def __init__(self):
         super(SimulatedAnnealing, self).__init__()
@@ -610,7 +611,8 @@ class SimulatedAnnealing(GreedyHeuristic):
                 if np.random.random() <= mutation_prob:
                     batch.pack_station = self.switch_stations(batch)
                     self.greedy_cobot_tour(batch)  # recalculate the greedy tour with new pack station
-                made_change = self.two_opt(batch, currentSolution, batch_id, T)
+                made_change = self.two_opt_randomized(batch, currentSolution, batch_id, T)
+
                 it_without_change += 1 if not made_change else 0
                 T *= alpha
                 iteration += 1
@@ -859,8 +861,8 @@ class IteratedLocalSearch(SimulatedAnnealing):
 
 
 if __name__ == "__main__":
-    SKUS = ["24"]  # options: 24 and 360
-    SUBSCRIPTS = ["_b"]
+    SKUS = ["360"]  # options: 24 and 360
+    SUBSCRIPTS = [""]
     NUM_ORDERSS = [20]
     MEANS = ["5"]
     instance_sols = {}
@@ -886,7 +888,7 @@ if __name__ == "__main__":
                         orders['{}_5'.format(str(NUM_ORDERS))] = r'data/sku{}/orders_{}_mean_{}_sku_{}{}.xml'.format(SKU, str(NUM_ORDERS), MEAN, SKU, SUBSCRIPT)
                         sols_and_runtimes = {}
                         runtimes = [5, 10, 20, 40, 80, 140]
-                        runtimes = [25]  # for debugging
+                        runtimes = [40]  # for debugging
                         for runtime in runtimes:
                             np.random.seed(52302381)
                             if runtime == 0:
@@ -906,6 +908,6 @@ if __name__ == "__main__":
                         continue
                     instance_sols[(SKU, SUBSCRIPT, NUM_ORDERS)] = sols_and_runtimes
 
-    with open('../analyse_solution/solutions/dedicated3.pickle', 'wb') as handle:
+    with open('../analyse_solution/solutions/dedicated.pickle', 'wb') as handle:
         pickle.dump(instance_sols, handle, protocol=pickle.HIGHEST_PROTOCOL)
 

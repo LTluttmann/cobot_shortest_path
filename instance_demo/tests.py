@@ -4,9 +4,10 @@ This script implements some tests of the validity of a solution, ie whether all 
 
 from agv_routing_mixed import GreedyMixedShelves, SimulatedAnnealingMixed, VariableNeighborhoodSearch, IteratedLocalSearchMixed
 from agv_routing_dedicated import GreedyHeuristic, SimulatedAnnealing, IteratedLocalSearch
+from agv_routing_split_orders import IteratedLocalSearchMixed
 import numpy as np
 
-class SolutionTester(IteratedLocalSearch):
+class SolutionTester(IteratedLocalSearchMixed):
 
     def __init__(self):
         super(SolutionTester, self).__init__()
@@ -49,7 +50,7 @@ class SolutionTester(IteratedLocalSearch):
 
 if __name__ == "__main__":
     st = SolutionTester()
-    st.perform_ils(150, 80)
+    st.perform_ils(20, 20)
     #st.reduced_vns(100, 80, 3)
     # st.simulatedAnnealing()
     #st.perform_ils(30, 50)
