@@ -410,7 +410,10 @@ class GreedyMixedShelves(Demo):
                 shelf_with_min_dist = min(shelf_distances.keys(), key=(lambda k: shelf_distances[k]))
                 item_dists.append(shelf_distances[shelf_with_min_dist])
             order_pack_dists[pack_station] = np.sum(item_dists)
-        return min(order_pack_dists.keys(), key=(lambda k: order_pack_dists[k]))
+        min_ps, dist = min(order_pack_dists.items(), key=itemgetter(1))
+        order_pack_dists.pop(min_ps)
+        savings = min(order_pack_dists.values()) - dist
+        return min_ps, savings
 
     def assign_orders_to_stations(self):
         """
@@ -419,9 +422,24 @@ class GreedyMixedShelves(Demo):
         :return:
         """
         orders_of_stations = defaultdict(list)
-        for order_id, order in self.warehouseInstance.Orders.items():
-            station_of_order = self.get_station_with_min_total_distance(order_id)
-            orders_of_stations[station_of_order].append(order_id)
+        weight_of_station = defaultdict(int)
+        num_ps = len(self.warehouseInstance.OutputStations)
+
+        order_dists = {
+            order: self.get_station_with_min_total_distance(order) for order in self.warehouseInstance.Orders.keys()
+        }
+
+        order_dists = {k: v[0] for k, v in sorted(order_dists.items(), key=lambda item: item[1], reverse=True)}
+
+        total_weight = sum(
+            [self.get_total_weight_by_order(order) for order in self.warehouseInstance.Orders.keys()]
+        )
+        for order_id, station in order_dists.items():
+            if not weight_of_station[station] + self.get_total_weight_by_order(order_id) > total_weight / num_ps:
+                orders_of_stations[station].append(order_id)
+            else:
+                alt_station = set(self.warehouseInstance.OutputStations.keys()).difference({station[0]}).pop()
+                orders_of_stations[alt_station].append(order_id)
         return orders_of_stations
 
     def greedy_next_order_to_batch(self, batch: BatchSplit, already_assigned, items_of_station, forbidden=None) -> ItemOfBatch:
@@ -439,8 +457,11 @@ class GreedyMixedShelves(Demo):
         """
         if forbidden is None:
             forbidden = []
-        other_items_of_station = {item_id: item for item_id, item in items_of_station.items() if item_id not in already_assigned+forbidden} # np.setdiff1d(list(items_of_station.keys()), already_assigned+forbidden)
-        print("other unassigned orders in the same station ({}) as this batch: ".format(batch.pack_station), other_items_of_station)
+        other_items_of_station = {
+            item_id: item for item_id, item in items_of_station.items() if item_id not in already_assigned+forbidden
+        }  # np.setdiff1d(list(items_of_station.keys()), already_assigned+forbidden)
+        print("other unassigned orders in the same station ({}) as this batch: ".format(batch.pack_station),
+              other_items_of_station)
         min_dist_to_item = dict()
         for item in other_items_of_station.values():
             min_distances = []
@@ -947,7 +968,7 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                     if batch.pack_station == item.ps:
                         candidate_batches[key] = item.weight + batch.weight
                 if not candidate_batches:
-                    pass
+                    pass  # TODO
                 else:
                     new_batch_of_item = min(candidate_batches.keys(), key=(lambda k: candidate_batches[k]))
                     self.update_batches_from_new_item(new_item=item, batch_id=new_batch_of_item)
@@ -1075,8 +1096,8 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
             if iters_with_improved_bin_packing_but_not_fitness < 2:
                 improvement = self.optimized_perturbation()
             if not improvement:
-                #if np.random.random() < 0.2:
-                #    self.change_ps_of_order()
+                if np.random.random() < 0.2:
+                    self.change_ps_of_order()
                 self.perturbation()
             for batch in list(self.batches.values()):
                 #  self.local_search_shelves(batch)
