@@ -795,7 +795,9 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
     def change_ps_of_order(self):
         order_i = np.random.choice(list(self.warehouseInstance.Orders.keys()))
         first_order_ps = self.get_assigned_items_of_order(order_i)[0].ps
-        cand_orders = self.get_orders_assigned_to_station(np.random.choice(np.setdiff1d(list(self.warehouseInstance.OutputStations.keys()), first_order_ps)))
+        cand_orders = self.get_orders_assigned_to_station(
+            np.random.choice(np.setdiff1d(list(self.warehouseInstance.OutputStations.keys()), first_order_ps))
+        )
         if not cand_orders:
             cand_orders = np.setdiff1d(list(self.warehouseInstance.Orders.keys()), order_i)
         order_j = np.random.choice(cand_orders)
@@ -1192,8 +1194,8 @@ class VariableNeighborhoodSearch(IteratedLocalSearchMixed):
 
 if __name__ == "__main__":
     SKUS = ["24"]  # options: 24 and 360
-    SUBSCRIPTS = ["", "_a", "_b"]
-    NUM_ORDERSS = [10, 20]  # [10,
+    SUBSCRIPTS = [""]
+    NUM_ORDERSS = [10]  # [10,
     MEANS = ["5"]
     instance_sols = {}
     model_sols = {}
@@ -1218,7 +1220,7 @@ if __name__ == "__main__":
                     orders['{}_5'.format(str(NUM_ORDERS))] = r'data/sku{}/orders_{}_mean_{}_sku_{}{}.xml'.format(SKU, str(NUM_ORDERS), MEAN, SKU, SUBSCRIPT)
                     sols_and_runtimes = {}
                     runtimes = [0, 4, 8, 13, 20, 30, 40, 50, 60, 80, 100, 120]
-                    runtimes = [30]
+                    runtimes = [40]
                     for runtime in runtimes:
                         np.random.seed(52302381)
                         if runtime == 0:
