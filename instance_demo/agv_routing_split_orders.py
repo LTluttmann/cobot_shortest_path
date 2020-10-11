@@ -145,7 +145,7 @@ class WarehouseDateProcessing():
 class Demo():
     def __init__(self, splitOrders=False):
 
-        self.batch_weight = 18
+        self.batch_weight = 18.
         self.item_id_pod_id_dict = {}
         self.station_id_bot_id_dict = dict()
         # [0]
@@ -812,13 +812,12 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                 # choose the batch with maximum workload after assignment
                 new_batch_of_item = max(candidate_batches.keys(), key=(lambda k: candidate_batches[k]))
                 new_batch_of_item = np.random.choice(list(candidate_batches.keys()))
-                new_batch_of_item = min(candidate_batches.keys(), key=(lambda k: candidate_batches[k]))
+                # new_batch_of_item = min(candidate_batches.keys(), key=(lambda k: candidate_batches[k]))
                 self.update_batches_from_new_item(new_item=item, batch_id=new_batch_of_item)
         print("fitness after perturbation: ", self.get_fitness_of_solution())
         return history
 
     def change_ps_of_order(self):
-        # todo rather do a switch of orders of two different pack stations
         order_i = np.random.choice(list(self.warehouseInstance.Orders.keys()))
         first_order_ps = self.get_assigned_items_of_order(order_i)[0].ps
         cand_orders = self.get_orders_assigned_to_station(
@@ -851,8 +850,9 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                 self.batches[batch_id] = BatchSplit(batch_id, new_ps, self.station_id_bot_id_dict[new_ps])
                 self.update_batches_from_new_item(item, batch_id)
             else:
-                # choose the batch with maximum workload after assignment
+                # choose the batch with minimum workload after assignment
                 new_batch_of_item = min(candidate_batches.keys(), key=(lambda k: candidate_batches[k]))
+                new_batch_of_item = np.random.choice(list(candidate_batches.keys()))
                 self.update_batches_from_new_item(new_item=item, batch_id=new_batch_of_item)
         assert len(set([i for batch in self.batches.values() for i in batch.items.keys()])) == 50
 
@@ -916,7 +916,7 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
 
     def randomized_local_search(self, max_iters=15, history=None):
         """
-        perform simple randomized swap of orders to batches. This is done for a given number of iterations on
+        perform simple randomized swap of items to batches. This is done for a given number of iterations on
         randomly drawn orders.
         Neighborhood solution is accepted if it results in a better fitness value
         :return:
@@ -941,7 +941,9 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                 processed.extend([item_i.ID, item_j.ID])
                 self.replace_item(batch_i, batch_j, item_i, item_j)
                 self.local_search_shelves(batch_i)
+                self.replace_items_adding_node(batch_i)
                 self.local_search_shelves(batch_j)
+                self.replace_items_adding_node(batch_j)
                 if self.get_fitness_of_solution() < curr_fit or sum([len(b.route) for b in self.batches.values()]) < sum([len(b.route) for b in curr_sol.values()]):
                     curr_sol = copy.deepcopy(self.batches)
                     curr_fit = self.get_fitness_of_solution()
@@ -950,12 +952,78 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
             iters += 1
         assert len(set([i for batch in self.batches.values() for i in batch.items.keys()])) == 50
 
+    def determine_switchable_items(self, batch_i, batch_j, processed_items, curr_fit, curr_sol, item_id_pod_id_dict_copy):
+        """
+        given two batches (batch ids), this function determines one order of each batch which can be exchanged between
+        the batches (wrt to capacity restrictions).
+        :param batch_i:
+        :param batch_j:
+        :return:
+        """
+        batch_i_items = [i for i in batch_i.items.values() if i.ID not in processed_items]
+        batch_j_items = [j for j in batch_j.items.values() if j.ID not in processed_items]
+        np.random.shuffle(batch_i_items)
+        np.random.shuffle(batch_j_items)
+        for item_i in batch_i_items:
+            for item_j in batch_j_items:
+                if {item_i.ID, item_j.ID} in processed_items:
+                    continue
+                processed_items.append({item_i.ID, item_j.ID})
+                weight_diff = item_i.weight - item_j.weight
+                if (weight_diff <= 0 and abs(weight_diff) <= self.batch_weight - batch_i.weight) or (
+                        weight_diff > 0 and weight_diff <= self.batch_weight - batch_j.weight
+                ):  # if the weight diff is negative item_j is heavier than item_i
+                    # in this case we need to check if order_j still fits in batch_i
+                    self.replace_item(batch_i, batch_j, item_i, item_j)
+
+                    self.replace_items_adding_node(batch_i)
+                    self.local_search_shelves(batch_i)
+
+                    self.replace_items_adding_node(batch_j)
+                    self.local_search_shelves(batch_j)
+                    if self.get_fitness_of_solution() < curr_fit:
+                        curr_sol = copy.deepcopy(self.batches)
+                        curr_fit = self.get_fitness_of_solution()
+                        item_id_pod_id_dict_copy = copy.deepcopy(self.item_id_pod_id_dict)
+                    else:
+                        self.batches = copy.deepcopy(curr_sol)
+                        self.item_id_pod_id_dict = copy.deepcopy(item_id_pod_id_dict_copy)
+                return self.determine_switchable_items(
+                    self.batches[batch_i.ID], self.batches[batch_j.ID], processed_items, curr_fit, curr_sol,
+                    item_id_pod_id_dict_copy
+                )
+
+    def local_search(self, processed=None):
+        """
+        perform simple randomized swap of items to batches. This is done for a given number of iterations on
+        randomly drawn orders.
+        Neighborhood solution is accepted if it results in a better fitness value
+        :return:
+        """
+        processed = [] if not processed else processed
+        curr_fit = self.get_fitness_of_solution()
+        curr_sol = copy.deepcopy(self.batches)
+        item_id_pod_id_dict_copy = copy.deepcopy(self.item_id_pod_id_dict)
+        memory = []
+        for batch_i in self.batches.values():
+            for batch_j in [
+                batch for batch in self.batches.values() if batch.ID != batch_i.ID and
+                                                            batch.pack_station == batch_i.pack_station
+            ]:
+                if batch_i.ID == batch_j.ID or {batch_i.ID, batch_j.ID} in processed:
+                    continue
+                self.determine_switchable_items(batch_i, batch_j, memory, curr_fit, curr_sol,item_id_pod_id_dict_copy)
+                processed.append({batch_i.ID, batch_j.ID})
+                return self.local_search(processed)
+
     def optimized_perturbation(self):
         assert all([len(batch.route) > 0 for batch in self.batches.values()])
+        stock = sum([stock for item in self.item_id_pod_id_dict.keys() for stock in self.item_id_pod_id_dict[item].values()])
         print("do optimized perturbation")
         improvement = True
         curr_sol = copy.deepcopy(self.batches)
         change = False
+        item_id_pod_id_dict_copy = copy.deepcopy(self.item_id_pod_id_dict)
         while np.ceil(sum([self.get_total_weight_by_order(order) for order in self.warehouseInstance.Orders.keys()]) / 18) < len(self.batches) and improvement:
             change = True
             weight_dict = self.get_weight_per_batch()
@@ -968,7 +1036,7 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
             destroy_batch = np.random.choice(keys, p=probabilities)
             weight_dict.pop(destroy_batch)
             items = self.batches[destroy_batch].items
-            # self.replenish_shelves(self.batches[destroy_batch])
+            self.replenish_shelves(self.batches[destroy_batch])
             self.batches.pop(destroy_batch)
             # sort orders with respect to their weight in descending order (try to assign the biggest orders first)
             weight_of_items = {k: v for k, v in sorted(items.items(), key=lambda item: item[1].weight, reverse=True)}
@@ -986,17 +1054,28 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
             if all([batch.weight <= self.batch_weight for batch in self.batches.values()]):
                 improvement = True
             else:
+                assert sum([stock for item in self.item_id_pod_id_dict.keys() for stock in
+                            self.item_id_pod_id_dict[item].values()]) == stock
                 improvement = self.repair()
+                assert sum([stock for item in self.item_id_pod_id_dict.keys() for stock in
+                            self.item_id_pod_id_dict[item].values()]) == stock
             if improvement:
                 for batch in self.batches.values():
                     if len(batch.route) == 0:
+                        assert sum([stock for item in self.item_id_pod_id_dict.keys() for stock in self.item_id_pod_id_dict[item].values()]) == stock
                         self.greedy_cobot_tour(batch)
+                        assert sum([stock for item in self.item_id_pod_id_dict.keys() for stock in
+                                    self.item_id_pod_id_dict[item].values()]) == stock
                         self.simulatedAnnealing(batch=batch)
                 curr_sol = copy.deepcopy(self.batches)
+                item_id_pod_id_dict_copy = copy.deepcopy(self.item_id_pod_id_dict)
                 assert all([len(batch.route) > 0 for batch in self.batches.values()])
             else:
                 self.batches = copy.deepcopy(curr_sol)
+                self.item_id_pod_id_dict = copy.deepcopy(item_id_pod_id_dict_copy)
                 assert all([len(batch.route) > 0 for batch in self.batches.values()])
+                assert sum([stock for item in self.item_id_pod_id_dict.keys() for stock in
+                            self.item_id_pod_id_dict[item].values()]) == stock
         if improvement and change:
             print("found solution with one batch less")
         return bool(improvement * change)
@@ -1006,9 +1085,10 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         while not all([batch.weight <= self.batch_weight for batch in self.batches.values()]) and improvement:
             improvement = False
             curr_sol = copy.deepcopy(self.batches)
+            item_id_pod_id_dict_copy = copy.deepcopy(self.item_id_pod_id_dict)
             inf_batch = next(batch for batch in self.batches.values() if batch.weight > self.batch_weight)
-            self.batches.pop(inf_batch.ID)
-            for other_batch in [batch for batch in copy.deepcopy(self.batches).values() if batch.pack_station == inf_batch.pack_station]:
+            for other_batch in [batch for batch in copy.deepcopy(self.batches).values() if batch.pack_station == inf_batch.pack_station and batch.ID != inf_batch.ID]:
+                self.batches.pop(inf_batch.ID)
                 slack = np.abs(inf_batch.weight - other_batch.weight)
                 self.batches.pop(other_batch.ID)  # print(set(inf_batch.items.keys()).intersection(other_batch.items.keys()))
                 items_of_batches = dict(**copy.deepcopy(inf_batch.items), **copy.deepcopy(other_batch.items))
@@ -1031,12 +1111,13 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                     return improvement
                 else:
                     self.batches = copy.deepcopy(curr_sol)
-                    self.batches.pop(inf_batch.ID)
+                    self.item_id_pod_id_dict = copy.deepcopy(item_id_pod_id_dict_copy)
+                    # self.batches.pop(inf_batch.ID)
         return improvement
 
     def local_search_shelves(self, batch: BatchSplit):
         # print("do local_search_shelves")
-        if len(batch.items) / len(batch.route) < 2 or len(batch.route) > 3:
+        if len(batch.items) / len(batch.route) < 2 or len(batch.route) >= 2:
             curr_batch = copy.deepcopy(batch)
             batch.route = []
             item_id_pod_it_dict_copy = copy.deepcopy(self.item_id_pod_id_dict)
@@ -1060,7 +1141,6 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                 assert len(batch.route) > 0
                 assert batch is self.batches[batch.ID]
                 self.item_id_pod_id_dict = item_id_pod_it_dict_copy
-        assert len(set([i for batch in self.batches.values() for i in batch.items.keys()])) == 50
 
     def check_for_exchangable_item(self, batch, item_to_exchange, candidate_batches: list):
         for batch2 in candidate_batches:
@@ -1083,11 +1163,11 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                         return
 
     def replace_items_adding_node(self, batch: BatchSplit):
-        print("do replace_items_adding_node")
-        assert len(set([i for batch in self.batches.values() for i in batch.items.keys()])) == 50
         for items_of_shelf in list(batch.items_of_shelves.values()):
             if len(items_of_shelf) == 1:
                 item_to_replace = items_of_shelf[0]
+                # candidate batches are all other batches of the same pack station which also include the shelf of
+                # the considered item in their route and at this shelf there are also more then 1 items picked up
                 cand_batches = [cand_batch for cand_batch in self.batches.values() if
                                 cand_batch.pack_station == batch.pack_station and not cand_batch.ID == batch.ID
                                 and not len(cand_batch.items_of_shelves[item_to_replace.shelf]) == 1]
@@ -1098,6 +1178,18 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                 else:
                     assert batch is self.batches[batch.ID]
                     self.check_for_exchangable_item(batch, item_to_replace, cand_batches)
+
+    def reduce_number_of_batches(self, max_tries=10000):
+        tries1 = 0
+        while np.ceil(
+                sum([self.get_total_weight_by_order(order) for order in self.warehouseInstance.Orders.keys()]) / 18
+        ) < len(self.batches) and tries1 < max_tries:
+            self.change_ps_of_order()
+            tries = 0
+            #while tries < 4:
+            self.optimized_perturbation()
+            #    tries += 1
+            #tries1 += 1
 
     def perform_ils(self, num_iters, t_max):
         """
@@ -1113,20 +1205,10 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         item_id_pod_id_dict_copy = copy.deepcopy(self.item_id_pod_id_dict)
         T = self.get_fitness_of_solution() * 0.02
         history = None
-        iters_with_improved_bin_packing_but_not_fitness = 0
-        while iter < num_iters and t < t_max:
-            improvement = False
-            if np.random.random() < 0.7:
-                self.change_ps_of_order()
-                pass
-            if iters_with_improved_bin_packing_but_not_fitness < 2:
-                improvement = self.optimized_perturbation()
-            if not improvement:
-                self.perturbation()
-            for batch in list(self.batches.values()):
-                self.local_search_shelves(batch)
-                self.replace_items_adding_node(batch)
-            self.randomized_local_search(15)
+        #self.reduce_number_of_batcheswhile()
+        while t < t_max:
+            self.reduce_number_of_batches()
+            self.local_search()
             neighbor_fit = self.get_fitness_of_solution()
             print("perturbation: curr fit: {}; cand fit {}".format(curr_fit, neighbor_fit))
             if neighbor_fit < curr_fit:  # or improvement:  # or self.acceptWithProbability(neighbor_fit, curr_fit, T):
@@ -1136,13 +1218,11 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                 if curr_fit < best_fit:
                     best_sol = copy.deepcopy(self.batches)
                     best_fit = self.get_fitness_of_solution()
-                if improvement:
-                    iters_with_improved_bin_packing_but_not_fitness = 0
             else:
-                self.batches = copy.deepcopy(curr_sol)  # don´t accept new solution and stick with the current one
-                self.item_id_pod_id_dict = copy.deepcopy(item_id_pod_id_dict_copy)
-                if improvement:
-                    iters_with_improved_bin_packing_but_not_fitness += 0#  1
+                self.perturbation()
+                self.change_ps_of_order()
+                #self.batches = copy.deepcopy(curr_sol)  # don´t accept new solution and stick with the current one
+                #self.item_id_pod_id_dict = copy.deepcopy(item_id_pod_id_dict_copy)
             iter += 1
             T *= 0.8
             t = time.time() - starttime
@@ -1186,7 +1266,7 @@ if __name__ == "__main__":
                     orders['{}_5'.format(str(NUM_ORDERS))] = r'data/sku{}/orders_{}_mean_{}_sku_{}{}.xml'.format(SKU, str(NUM_ORDERS), MEAN, SKU, SUBSCRIPT)
                     sols_and_runtimes = {}
                     runtimes = [0, 4, 8, 13, 20, 30, 40, 50, 60, 80, 100, 120]
-                    runtimes = [20]
+                    runtimes = [95]
                     for runtime in runtimes:
                         np.random.seed(52302381)
                         if runtime == 0:
