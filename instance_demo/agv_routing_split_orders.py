@@ -50,11 +50,10 @@ storagePolicies = {}
 storagePolicies['mixed'] = 'data/sku{}/pods_items_mixed_shevels_1-5.txt'.format(SKU)
 
 orders = {}
-orders['{}_5'.format(str(NUM_ORDERS))] = r'data/sku{}/orders_{}_mean_5_sku_{}{}.xml'.format(SKU, str(NUM_ORDERS), SKU, SUBSCRIPT)
+orders[f'{str(NUM_ORDERS)}_5'] = f'data/sku{SKU}/orders_{str(NUM_ORDERS)}_mean_5_sku_{SKU}{SUBSCRIPT}.xml'
 #orders['10_5'] = r'data/sku{}/orders_10_mean_1x6_sku_{}.xml'.format(SKU, SKU)
 
 # ----------------------------------------------------------------------------------------------------------------------
-
 
 class WarehouseDateProcessing():
     def __init__(self, warehouseInstance, batch_size=None):
@@ -262,21 +261,30 @@ class Demo():
             weights.append(self.get_weight_by_item(item))
         return np.sum(weights)
 
-    def get_weight_per_batch(self):
+    def get_weight_per_batch(self, pack_station=None):
         """
         calculates the total weight of all the items already assigned to the batches
         :return: dictionary with batch ID as key and its respective weight as value
         """
         weight_dict = dict()
         for batch_id, batch in self.batches.items():
-            weight_dict[batch_id] = batch.weight
+            if pack_station and batch.pack_station == pack_station:
+                weight_dict[batch_id] = batch.weight
+            elif not pack_station:
+                weight_dict[batch_id] = batch.weight
         return weight_dict
 
     def get_assigned_items_of_order(self, order_id):
         return [item for batch in self.batches.keys() for item in self.batches[batch].items.values() if item.order == order_id]
 
     def get_orders_assigned_to_station(self, station):
-        return np.unique([self.get_assigned_items_of_order(order)[0].order for order in self.warehouseInstance.Orders.keys() if self.get_assigned_items_of_order(order)[0].ps == station])
+        orders = []
+        for order in self.warehouseInstance.Orders.keys():
+            if not self.get_assigned_items_of_order(order):
+                continue
+            elif self.get_assigned_items_of_order(order)[0].ps == station:
+                orders.append(order)
+        return np.unique(orders)
 
     def get_distance_between_items(self, item1, item2):
         """
@@ -436,7 +444,7 @@ class GreedyMixedShelves(Demo):
             [self.get_total_weight_by_order(order) for order in self.warehouseInstance.Orders.keys()]
         )
         for order_id, station in order_dists.items():
-            if not weight_of_station[station] + self.get_total_weight_by_order(order_id) > total_weight / num_ps:
+            if not len(orders_of_stations.get(station, [])) >= .5 * len(self.warehouseInstance.Orders):  #  weight_of_station[station] + self.get_total_weight_by_order(order_id) > total_weight / num_ps:
                 orders_of_stations[station].append(order_id)
                 weight_of_station[station] += self.get_total_weight_by_order(order_id)
             else:
@@ -1041,13 +1049,24 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
     def optimized_perturbation(self):
         print("try to minimize the number of batches")
         assert all([len(batch.route) > 0 for batch in self.batches.values()])
+        assert len(set([i for batch in self.batches.values() for i in batch.items.keys()])) == 16
         improvement = True
         change = False
         curr_sol = copy.deepcopy(self.batches)
         item_id_pod_id_dict_copy = copy.deepcopy(self.item_id_pod_id_dict)
-        while improvement:
+        while improvement and np.ceil(
+                sum([self.get_total_weight_by_order(order) for order in self.warehouseInstance.Orders.keys()]) / 18
+        ) < len(self.batches):
+            assert len(set([i for batch in self.batches.values() for i in batch.items.keys()])) == 16
             change = True
-            weight_dict = self.get_weight_per_batch()
+            num_batches_per_station = {
+                pack_station: len(self.get_batches_for_station(pack_station)) for pack_station in self.warehouseInstance.OutputStations
+            }
+            if any([np.abs(v_1-v_2) > 0 for k_1, v_1 in num_batches_per_station.items() for k_2, v_2 in num_batches_per_station.items() if not k_1==k_2]):
+                ps_to_destroy_from = max(num_batches_per_station.keys(), key=( lambda k: num_batches_per_station[k]))
+                weight_dict = self.get_weight_per_batch(ps_to_destroy_from)
+            else:
+                weight_dict = self.get_weight_per_batch()
             probabilities = []
             keys = []
             for key, weight in weight_dict.items():
@@ -1071,7 +1090,7 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                 else:
                     new_batch_of_item = min(candidate_batches.keys(), key=(lambda k: candidate_batches[k]))
                     self.update_batches_from_new_item(new_item=item, batch_id=new_batch_of_item)
-
+            assert len(set([i for batch in self.batches.values() for i in batch.items.keys()])) == 16
             if all([batch.weight <= self.batch_weight for batch in self.batches.values()]):
                 improvement = True
             else:
@@ -1125,7 +1144,6 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         return improvement
 
     def local_search_shelves(self, batch: BatchSplit):
-        # print("do local_search_shelves")
         if len(batch.route) == 0:
             return
         elif len(batch.items) / len(batch.route) < 2 or len(batch.route) >= 2:
@@ -1156,6 +1174,8 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
     def check_for_exchangable_item(self, batch, item_to_exchange, candidate_batches: list):
         for batch2 in candidate_batches:
             candidate_items = [len(np.intersect1d(item.shelves, np.setdiff1d(batch.route, item_to_exchange.shelf))) > 0 for item in batch2.items.values()]
+            if sum(candidate_items) == 0:
+                continue
             candidate_items = list(itertools.compress(batch2.items.values(), candidate_items))
             for item in candidate_items:
                 weight_diff = item_to_exchange.weight - item.weight
@@ -1165,13 +1185,13 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                     self.replace_item(batch_i=batch, batch_j=batch2, item_i=item_to_exchange, item_j=item)
                     return
             exchange_items = []
-            rest_kappa = 18 - batch.weight + item_to_exchange.weight
-            miss_kappa = np.abs(18 - batch2.weight - item_to_exchange.weight)
+            rest_kappa = self.batch_weight - batch.weight + item_to_exchange.weight
+            miss_kappa = np.abs(self.batch_weight - batch2.weight - item_to_exchange.weight)
             for item in sorted(candidate_items, key=lambda x: x.weight, reverse=False):
                 if item.weight <= rest_kappa:
                     exchange_items.append(item)
                     rest_kappa -= item.weight
-                    if sum([item_rem.weight for item_rem in exchange_items]) > miss_kappa:
+                    if sum([item_rem.weight for item_rem in exchange_items]) >= miss_kappa:
                         for item2 in exchange_items:
                             self.exchange_item(batch_add=batch, batch_del=batch2, item=item2)
                         self.exchange_item(batch_add=batch2, batch_del=batch, item=item_to_exchange)
@@ -1179,28 +1199,9 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                 else:
                     return
 
-
-                #
-                #
-                # if weight_diff <= 0:  # if the weight diff is negative item_j is heavier than item_i
-                #     # in this case we need to check if order_j still fits in batch_i
-                #     if abs(weight_diff) <= self.batch_weight - batch.weight and \
-                #             (len(np.intersect1d(item_to_exchange.shelves, batch2.route)) > 0) and \
-                #             (len(np.intersect1d(item.shelves, np.setdiff1d(batch.route, item_to_exchange.shelf))) > 0):
-                #         # if yes, return the orders --> switch will be performed
-                #         self.replace_item(batch_i=batch, batch_j=batch2, item_i=item_to_exchange, item_j=item)
-                #         return
-                # elif weight_diff > 0:  # if the weight diff is positive order_i is heavier than order_j
-                #     # in this case we need to check if order_i still fits in batch_j
-                #     if (weight_diff <= self.batch_weight - batch2.weight) and \
-                #             (len(np.intersect1d(item_to_exchange.shelves, batch2.route)) > 0) and \
-                #             (len(np.intersect1d(item.shelves, np.setdiff1d(batch.route, item_to_exchange.shelf))) > 0):
-                #         self.replace_item(batch, batch2, item_to_exchange, item)
-                #         return
-
     def replace_items_adding_node(self, batch: BatchSplit):
         for items_of_shelf in list(batch.items_of_shelves.values()):
-            if len(items_of_shelf) < 3:
+            if len(items_of_shelf) < 4:
                 for item_to_replace in items_of_shelf:
                     # candidate batches are all other batches of the same pack station which also include the shelf of
                     # the considered item in their route and at this shelf there are also more then 1 items picked up
@@ -1209,6 +1210,8 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                         cand_batch.pack_station == batch.pack_station and not cand_batch.ID == batch.ID
                         and any([x in cand_batch.route for x in item_to_replace.shelves])
                     ]
+                    if len(cand_batches) == 0:
+                        continue
                     if any([item_to_replace.weight + batch2.weight <= self.batch_weight for batch2 in cand_batches]):
                         batch2 = cand_batches[
                             [item_to_replace.weight + batch2.weight <= self.batch_weight for batch2 in cand_batches].index(True)
@@ -1228,6 +1231,7 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         while np.ceil(
                 sum([self.get_total_weight_by_order(order) for order in self.warehouseInstance.Orders.keys()]) / 18
         ) < len(self.batches) and tries < max_tries:
+            assert len(set([i for batch in self.batches.values() for i in batch.items.keys()])) == 16
             total_weight_per_station = {
                 station: sum(
                     [self.get_total_weight_by_order(order) for order in self.get_orders_assigned_to_station(station)]
@@ -1240,9 +1244,11 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
             ]
             if any(weight_not_at_optimum) and tries2 < 5:
                 self.optimized_perturbation()
+                assert len(set([i for batch in self.batches.values() for i in batch.items.keys()])) == 16
                 tries2 += 1
             else:
                 self.change_ps_of_order()
+                assert len(set([i for batch in self.batches.values() for i in batch.items.keys()])) == 16
             tries += 1
         return imp
 
@@ -1287,6 +1293,14 @@ class VariableNeighborhoodSearch(IteratedLocalSearchMixed):
     """
     def __init__(self):
         super(VariableNeighborhoodSearch, self).__init__()
+
+    def is_balanced(self):
+        ps1 = len(self.get_batches_for_station("OutD0"))
+        ps2 = len(self.get_batches_for_station("OutD1"))
+        if np.abs(ps1-ps2) > 1:
+            return False
+        else:
+            return True
 
     def shake(self, k):
         """
@@ -1343,8 +1357,10 @@ class VariableNeighborhoodSearch(IteratedLocalSearchMixed):
             k = 1
             while k <= k_max:
                 self.shake(k)
-                # self.change_ps_of_order()
-                self.reduce_number_of_batches(20)
+                if np.random.random() < .99:
+                    # todo implement check whether difference
+                    self.change_ps_of_order()
+                self.reduce_number_of_batches(300)
                 print("perform local search")
                 for batch in list(self.batches.values()):
                     self.replace_items_adding_node(batch)
@@ -1371,10 +1387,11 @@ class VariableNeighborhoodSearch(IteratedLocalSearchMixed):
         self.batches = best_sol
 
 if __name__ == "__main__":
+    # todo für 1.6 orderline ausführen
     SKUS = ["24"]  # options: 24 and 360
-    SUBSCRIPTS = ["_a"]
+    SUBSCRIPTS = [""]
     NUM_ORDERSS = [10]  # [10,
-    MEANS = ["5"]
+    MEANS = ["1x6"]
     instance_sols = {}
     model_sols = {}
     for SKU in SKUS:
@@ -1399,7 +1416,7 @@ if __name__ == "__main__":
                     orders['{}_5'.format(str(NUM_ORDERS))] = r'data/sku{}/orders_{}_mean_{}_sku_{}{}.xml'.format(SKU, str(NUM_ORDERS), MEAN, SKU, SUBSCRIPT)
                     sols_and_runtimes = {}
                     runtimes = [0, 4, 8, 13, 20, 30, 40, 50, 60, 80, 100, 120]
-                    runtimes = [320]
+                    runtimes = [120]
                     for runtime in runtimes:
                         np.random.seed(123523381)
                         if runtime == 0:
@@ -1408,7 +1425,7 @@ if __name__ == "__main__":
                         else:
                             vns = VariableNeighborhoodSearch()
                             #vns.perform_ils(t_max=runtime)
-                            vns.reduced_vns(t_max=runtime, k_max=3)
+                            vns.reduced_vns(t_max=runtime, k_max=2)
                     STORAGE_STRATEGY = "dedicated" if vns.is_storage_dedicated else "mixed"
                     vns.write_solution_to_xml(
                        'solutions/split_orders_{}_mean_{}_sku_{}{}_{}.xml'.format(str(NUM_ORDERS), MEAN, SKU,
