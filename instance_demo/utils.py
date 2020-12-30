@@ -52,11 +52,12 @@ class ItemOfOrder:
 
 
 class OrderOfBatch:
-    def __init__(self, ID, items, weight, item_shelf_mapping):
+    def __init__(self, ID, items, weight, item_shelf_mapping, batch_id):
         self.ID = ID
         self.weight = weight
         self.item_counts = defaultdict(int)
         self.items = self.init_items(items, item_shelf_mapping)  # dictionary for all items of an order
+        self.batch_id = batch_id
 
     def init_items(self, items, item_shelf_mapping):
         item_dict = {}
