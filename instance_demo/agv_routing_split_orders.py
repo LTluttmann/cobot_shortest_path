@@ -4,26 +4,19 @@ storage policy
 """
 
 # example to use
-import warnings
 import numpy as np
-import xml.etree.cElementTree as ET
 import networkx as nx
-import matplotlib.pyplot as plt
-import pandas as pd
 import itertools
-import datetime
 import pickle
-import traceback
 import os
 import os.path
 from os import path
 import math
 import json
 import time
-from operator import itemgetter, attrgetter
+from operator import itemgetter
 from xml.dom import minidom
 import rafs_instance as instance
-from collections import defaultdict, Iterable
 from utils import *
 import copy
 import random
@@ -34,6 +27,7 @@ except ImportError:
     from queue import LifoQueue
 import sys
 from collections import Counter
+import pandas as pd
 # ------------------------------------------- CONFIG -------------------------------------------------------------------
 SKU = "24"  # options: 24 and 360
 SUBSCRIPT = "_a"
@@ -156,6 +150,7 @@ class Demo():
         else:
             self.is_storage_dedicated = False
         self.batches = None
+
     # warehouse instance
     def prepareData(self):
         print("[0] preparing all data with the standard format: ")
@@ -463,7 +458,7 @@ class GreedyMixedShelves(Demo):
         the tour itself.
         :param batch:
         :param already_assigned: list of orders which are already assigned to batches
-        :param orders_of_station: list of orders that are assigned to the packing station of the batch
+        :param items_of_station: list of items that are assigned to the packing station of the batch
         :param forbidden: orders which have investigated already but would add to much weight to the batch
         :return:
         """
@@ -538,7 +533,7 @@ class GreedyMixedShelves(Demo):
         combination of each item to be inserted in the tour that minimizes the distance and add those shelfes at
         the corresponding positions until all items are included in the tour
         :param batch:
-        :param items:
+        :param item:
         :return:
         """
         if not item:
@@ -671,7 +666,6 @@ class SimulatedAnnealingMixed(GreedyMixedShelves):
         them.
         :param batch: the batch of the neighborhood solution
         :param currentSolution: the current solution to be improved
-        :param batch_id: ID of the batch
         :param T: current temperature
         """
         curr_tour = batch.route[:]
@@ -712,15 +706,6 @@ class SimulatedAnnealingMixed(GreedyMixedShelves):
             batch.route = curr_tour
             return False
 
-    def switch_stations(self, batch: BatchSplit):
-        """
-        vary the pack station of batches
-        :return:
-        """
-        curr_ps = batch.pack_station
-        new_ps = np.random.choice(np.setdiff1d(list(self.warehouseInstance.OutputStations.keys()), curr_ps))
-        return new_ps
-
     def simulatedAnnealing(self, alpha=0.975, maxIteration=1000, minTemperature=0.1,
                            max_it_without_improvement=7, batch: BatchSplit=None):
         """
@@ -729,7 +714,6 @@ class SimulatedAnnealingMixed(GreedyMixedShelves):
         :param alpha: cooling parameter
         :param maxIteration: maximum iterations
         :param minTemperature: temperature at which to terminate the algorithm if reached
-        :param mutation_prob: probability for switching the pack station of a batch
         :param max_it_without_improvement: maximum number of iterations allowed without changes in the solution
         :param batch: if only a single batch shall be optimized, specify it here
         """
@@ -787,7 +771,7 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         """
         does all the necessary updating when a order is added to a batch. This includes optimizing the tour through
         greedy and simulated annealing heuristics
-        :param new_order:
+        :param new_item:
         :param batch_id:
         :return:
         """
@@ -1049,7 +1033,6 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
     def optimized_perturbation(self):
         print("try to minimize the number of batches")
         assert all([len(batch.route) > 0 for batch in self.batches.values()])
-        assert len(set([i for batch in self.batches.values() for i in batch.items.keys()])) == 16
         improvement = True
         change = False
         curr_sol = copy.deepcopy(self.batches)
@@ -1057,7 +1040,6 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         while improvement and np.ceil(
                 sum([self.get_total_weight_by_order(order) for order in self.warehouseInstance.Orders.keys()]) / 18
         ) < len(self.batches):
-            assert len(set([i for batch in self.batches.values() for i in batch.items.keys()])) == 16
             change = True
             num_batches_per_station = {
                 pack_station: len(self.get_batches_for_station(pack_station)) for pack_station in self.warehouseInstance.OutputStations
@@ -1090,7 +1072,6 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                 else:
                     new_batch_of_item = min(candidate_batches.keys(), key=(lambda k: candidate_batches[k]))
                     self.update_batches_from_new_item(new_item=item, batch_id=new_batch_of_item)
-            assert len(set([i for batch in self.batches.values() for i in batch.items.keys()])) == 16
             if all([batch.weight <= self.batch_weight for batch in self.batches.values()]):
                 improvement = True
             else:
@@ -1154,8 +1135,18 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
             assigned = []
             while len(assigned) != len(batch.items):
                 to_be_assigned = [item for item in batch.items.values() if item.ID not in [i.ID for i in assigned]]
-                shelf_counts = Counter([shelf for item in to_be_assigned for shelf in item.shelves if shelf not in batch.route])
-                top_shelf = max(shelf_counts.keys(), key=(lambda k: shelf_counts[k]))
+                shelves = [shelf for item in to_be_assigned for shelf in item.shelves if shelf not in batch.route]
+                shelf_counts = Counter(shelves)
+                rank = pd.DataFrame.from_dict(
+                    shelf_counts, orient='index', columns=["num_shelves"]
+                ).rank(method="min", ascending=False).merge(
+                    pd.DataFrame.from_dict(
+                        {
+                            shelf: min([self.distance_ij[node, shelf] for node in batch.route+[batch.pack_station]]) for shelf in shelves
+                        }, orient="index", columns=["distance"]
+                    ).rank(method="min", ascending=True), left_index=True, right_index=True
+                )
+                top_shelf = rank.assign(mean_rank=rank.mean(axis=1)).mean_rank.idxmin()
                 items_in_top_shelf = [item for item in to_be_assigned if top_shelf in item.shelves]
                 for item in items_in_top_shelf:
                     if self.item_id_pod_id_dict[item.orig_ID][top_shelf] > 0:
@@ -1231,7 +1222,6 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         while np.ceil(
                 sum([self.get_total_weight_by_order(order) for order in self.warehouseInstance.Orders.keys()]) / 18
         ) < len(self.batches) and tries < max_tries:
-            assert len(set([i for batch in self.batches.values() for i in batch.items.keys()])) == 16
             total_weight_per_station = {
                 station: sum(
                     [self.get_total_weight_by_order(order) for order in self.get_orders_assigned_to_station(station)]
@@ -1244,11 +1234,9 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
             ]
             if any(weight_not_at_optimum) and tries2 < 5:
                 self.optimized_perturbation()
-                assert len(set([i for batch in self.batches.values() for i in batch.items.keys()])) == 16
                 tries2 += 1
             else:
                 self.change_ps_of_order()
-                assert len(set([i for batch in self.batches.values() for i in batch.items.keys()])) == 16
             tries += 1
         return imp
 
@@ -1342,7 +1330,6 @@ class VariableNeighborhoodSearch(IteratedLocalSearchMixed):
 
     def reduced_vns(self, t_max, k_max):
         """
-        :param max_iters:  maximum number of iterations
         :param t_max: maximum cpu time
         :param k_max: maximum number of different neighborhoods / shake operations to be performed
         """
@@ -1360,13 +1347,13 @@ class VariableNeighborhoodSearch(IteratedLocalSearchMixed):
                 if np.random.random() < .99:
                     # todo implement check whether difference
                     self.change_ps_of_order()
-                self.reduce_number_of_batches(300)
+                self.reduce_number_of_batches(30)
                 print("perform local search")
                 for batch in list(self.batches.values()):
                     self.replace_items_adding_node(batch)
                     self.local_search_shelves(batch)
-                self.local_search()
-                #self.randomized_local_search(30)
+                #self.local_search()
+                self.randomized_local_search(30)
                 neighbor_fit = self.get_fitness_of_solution()
                 print("curr fit: {}; cand fit {}".format(curr_fit, neighbor_fit))
                 if neighbor_fit < curr_fit:
@@ -1391,7 +1378,7 @@ if __name__ == "__main__":
     SKUS = ["24"]  # options: 24 and 360
     SUBSCRIPTS = [""]
     NUM_ORDERSS = [10]  # [10,
-    MEANS = ["1x6"]
+    MEANS = ["5"]  # possible: 1x6, 5, 10
     instance_sols = {}
     model_sols = {}
     for SKU in SKUS:

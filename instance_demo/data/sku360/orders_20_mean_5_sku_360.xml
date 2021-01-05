@@ -366,7 +366,7 @@
    <Orders>
       <Order TimeStamp="">
          <Positions>
-            <Position Count="1" ItemDescriptionID="20"/>
+            <Position Count="1" ItemDescriptionID="14"/>
             <Position Count="1" ItemDescriptionID="9"/>
             <Position Count="3" ItemDescriptionID="12"/>
             <Position Count="2" ItemDescriptionID="4"/>
@@ -429,7 +429,7 @@
       </Order>
       <Order TimeStamp="">
          <Positions>
-            <Position Count="2" ItemDescriptionID="20"/>
+            <Position Count="2" ItemDescriptionID="4"/>
             <Position Count="2" ItemDescriptionID="7"/>
             <Position Count="1" ItemDescriptionID="12"/>
             <Position Count="1" ItemDescriptionID="5"/>
