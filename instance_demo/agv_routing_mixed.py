@@ -1170,7 +1170,7 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                         self.item_id_pod_id_dict[item.orig_ID][top_shelf] -= 1
                         assigned.append(item)
                 batch.route.append(top_shelf)
-            self.swap_ps()
+            self.swap_ps(batch)
             # self.simulatedAnnealing(batch=batch)
             if not self.get_fitness_of_batch(batch) < self.get_fitness_of_batch(curr_batch):
                 setattr(batch, "items", curr_batch.items)
@@ -1179,9 +1179,9 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                 assert batch is self.batches[batch.ID]
                 self.item_id_pod_id_dict = item_id_pod_it_dict_copy
 
-    def swap_ps(self):
+    def swap_ps(self, batch_i):
         curr_fit = self.get_fitness_of_solution()
-        for batch_i, batch_j in itertools.combinations(list(self.batches.values()), 2):
+        for batch_j in [batch for batch in self.batches.values() if batch.pack_station != batch_i.pack_station]:
             batch_i_orig_station = batch_i.pack_station
             batch_j_orig_station = batch_j.pack_station
             batch_i.pack_station = str(np.random.choice(
@@ -1207,20 +1207,7 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         while np.ceil(
                 sum([self.get_total_weight_by_order(order) for order in self.warehouseInstance.Orders.keys()]) / 18
         ) < len(self.batches) and tries < max_tries:
-            # total_weight_per_station = {
-            #     station: sum(
-            #         [self.get_total_weight_by_order(order) for order in self.get_orders_assigned_to_station(station)]
-            #     ) for station in self.warehouseInstance.OutputStations.keys()
-            # }
-            # weight_not_at_optimum = [
-            #     np.ceil(weight / 18) < len(
-            #         self.get_batches_for_station(station)
-            #     ) for station, weight in total_weight_per_station.items()
-            # ]
-            # if any(weight_not_at_optimum):
             self.optimized_perturbation()
-            # else:
-            #    return
             tries += 1
         return imp
 
@@ -1325,7 +1312,7 @@ class VariableNeighborhoodSearch(IteratedLocalSearchMixed):
                     fit_before_ls = self.get_fitness_of_solution()
                     self.reduce_number_of_batches(max_tries=3)
 
-                    # self.local_search()
+                    self.local_search()
 
                     if len(self.batches) > 1:
                         self.randomized_local_search(max_iters=15, k=k)
