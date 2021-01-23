@@ -1060,7 +1060,7 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                 sum([self.get_total_weight_by_order(order) for order in self.warehouseInstance.Orders.keys()]) / 18
         ) < len(self.batches):
             change = True
-            destroy_batch = self.choose_batch_for_destruction()
+            destroy_batch = self.choose_batch_for_destruction(with_prob=True)
             orders_to_reassign = self.batches[destroy_batch].orders
             self.replenish_shelves(self.batches[destroy_batch])
             self.batches.pop(destroy_batch)
@@ -1087,7 +1087,7 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
                 for batch in self.batches.values():
                     if len(batch.route) == 0:
                         self.greedy_cobot_tour(batch)
-                        self.simulatedAnnealing(batch=batch)
+                        #self.simulatedAnnealing(batch=batch)
                 curr_sol = copy.deepcopy(self.batches)
                 item_id_pod_id_dict_copy = copy.deepcopy(self.item_id_pod_id_dict)
                 assert all([len(batch.route) > 0 for batch in self.batches.values()])
@@ -1207,8 +1207,10 @@ class IteratedLocalSearchMixed(SimulatedAnnealingMixed):
         while np.ceil(
                 sum([self.get_total_weight_by_order(order) for order in self.warehouseInstance.Orders.keys()]) / 18
         ) < len(self.batches) and tries < max_tries:
-            self.optimized_perturbation()
-            tries += 1
+            reduced = self.optimized_perturbation()
+            if not reduced:
+                self.perturbation()
+                tries += 1
         return imp
 
     def perform_ils(self, num_iters, t_max):
@@ -1311,9 +1313,6 @@ class VariableNeighborhoodSearch(IteratedLocalSearchMixed):
                 while improvement:
                     fit_before_ls = self.get_fitness_of_solution()
                     self.reduce_number_of_batches(max_tries=3)
-
-                    self.local_search()
-
                     if len(self.batches) > 1:
                         self.randomized_local_search(max_iters=15, k=k)
                     else:
@@ -1344,8 +1343,8 @@ class VariableNeighborhoodSearch(IteratedLocalSearchMixed):
 
 
 if __name__ == "__main__":
-    SKUS = ["360"]  # options: 24 and 360
-    SUBSCRIPTS = [""]  # , "_a", "_b"
+    SKUS = ["24"]  # options: 24 and 360
+    SUBSCRIPTS = ["_a"]  # , "_a", "_b"
     NUM_ORDERSS = [20]  # [10,
     MEANS = ["5"]  # "1x6",, "5"
     instance_sols = {}
@@ -1365,8 +1364,8 @@ if __name__ == "__main__":
 
                     storagePolicies = {}
                     # storagePolicies['dedicated'] = 'data/sku{}/pods_items_dedicated_1.txt'.format(SKU)
-                    # storagePolicies['mixed'] = 'data/sku{}/pods_items_mixed_shevels_1-5.txt'.format(SKU)
-                    storagePolicies['mixed'] = 'data/sku{}/pods_items_mixed_shevels_1-10.txt'.format(SKU)
+                    storagePolicies['mixed'] = 'data/sku{}/pods_items_mixed_shevels_1-5.txt'.format(SKU)
+                    #storagePolicies['mixed'] = 'data/sku{}/pods_items_mixed_shevels_1-10.txt'.format(SKU)
 
                     orders = {}
                     orders['{}_5'.format(str(NUM_ORDERS))] = r'data/sku{}/orders_{}_mean_{}_sku_{}{}.xml'.format(SKU,
