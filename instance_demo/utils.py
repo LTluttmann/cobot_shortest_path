@@ -43,6 +43,7 @@ class Batch:
                 edges.append(Edge(first, second))
         return edges
 
+
 class ItemOfOrder:
     def __init__(self, ID, orig_ID, shelves):
         self.ID = ID
@@ -58,6 +59,7 @@ class OrderOfBatch:
         self.item_counts = defaultdict(int)
         self.items = self.init_items(items, item_shelf_mapping)  # dictionary for all items of an order
         self.batch_id = batch_id
+        self.shelves = self.init_shelves()
 
     def init_items(self, items, item_shelf_mapping):
         item_dict = {}
@@ -67,6 +69,22 @@ class OrderOfBatch:
             self.item_counts[item] += 1
             item_dict[item_of_order.ID] = item_of_order
         return item_dict
+
+    def init_shelves(self):
+        assert self.items
+        shelves = defaultdict(int)
+        for item in self.items.values():
+            for shelf in item.shelves:
+                shelves[shelf] += 1
+        return shelves
+
+    @property
+    def chosen_shelves(self):
+        shelves = defaultdict(int)
+        for item in self.items.values():
+            if item.shelf:
+                shelves[item.shelf] += 1
+        return shelves
 
 
 class BatchNew:
@@ -86,17 +104,28 @@ class BatchNew:
             items_of_shelves[item.shelf].append(item)
         return items_of_shelves
 
+    @property
+    def shelves(self):
+        counts = defaultdict(int)
+        for i in [shelf for item in self.items.values() for shelf in item.shelves]:
+            counts[i] += 1
+        return counts
+
     def add_order(self, order: OrderOfBatch):
         self.orders[order.ID] = order
         for item in order.items.values():
             self.items[item.ID] = item
         self.weight += order.weight
+        order.batch_id = self.ID
 
     def del_order(self, order: OrderOfBatch):
         self.orders.pop(order.ID)
         for item in order.items.values():
             self.items.pop(item.ID)
         self.weight -= order.weight
+        self.route = [
+            x for x in self.route if not x in set(self.route).difference(list(self.items_of_shelves.keys()))
+        ]
 
     @property
     def pack_station(self):
