@@ -1519,9 +1519,9 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
 
 if __name__ == "__main__":
     SKUS = ["24"]  # options: 24 and 360
-    SUBSCRIPTS = ["_b"]  # , "_a", "_b"
-    NUM_ORDERSS = [20]  # [10,
-    MEANS = ["1x6"]  # "1x6",, "5"
+    SUBSCRIPTS = [""]  # , "_a", "_b"
+    NUM_ORDERSS = [10]  # [10,
+    MEANS = ["5"]  # "1x6",, "5"
     instance_sols = {}
     model_sols = {}
     NUM_DEPOTS = 2
