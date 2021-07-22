@@ -78,6 +78,7 @@ class GreedyMixedShelves(Demo):
             abs(len(self.get_batches_for_station(ps1)) - len(self.get_batches_for_station(ps2))) < 2
             for ps1, ps2 in list(itertools.combinations(self.warehouseInstance.OutputStations.keys(), 2))
         ])
+        assert set(self.warehouseInstance.Orders.keys()).symmetric_difference(set([x for batch in self.batches.values() for x in batch.orders])) == set()
 
     def get_station_with_min_total_distance(self, order_idx):
         """
@@ -590,7 +591,7 @@ class SimulatedAnnealingMixed(GreedyMixedShelves):
         alpha=0.95,
         maxIteration=1000,
         minTemperature=0.1,
-        max_it_without_improvement=6,
+        max_it_without_improvement=4,
         batch: BatchNew = None,
         lambda_param=0.75,
         init_weights=1,
@@ -698,7 +699,7 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
         )
         update_batch.add_order(new_order)
         self.greedy_cobot_tour(update_batch, new_order.items)
-        self.simulatedAnnealing(batch=self.batches[batch_id])
+        # self.simulatedAnnealing(batch=self.batches[batch_id]) # takes too much time --> perform only at the end
 
     def shake(self, k):
         batches_to_destroy = k if k <= len(self.batches) else len(self.batches)
@@ -854,11 +855,7 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
         batch_i_orders_weights = {
             order.ID: sum(
                 [
-                    (
-                        len(batch_i.items_of_shelves[key])
-                        - order.chosen_shelves.get(key, 0)
-                    )
-                    == 0
+                    (len(batch_i.items_of_shelves[key]) - order.chosen_shelves.get(key, 0)) == 0
                     for key in batch_i.items_of_shelves.keys()
                 ]
             )
@@ -1201,8 +1198,8 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
                         assigned.append(item)
                 batch.route.append(top_shelf)
         batch_eh, batch_eh_copy = self.swap_ps(batch)
-        self.swap_ps(batch)
-        self.simulatedAnnealing(batch=batch)
+        # self.swap_ps(batch)
+        # self.simulatedAnnealing(batch=batch)
         if not self.get_fitness_of_batch(batch) < self.get_fitness_of_batch(curr_batch):
             batch.__dict__ = curr_batch.__dict__.copy()
             if batch_eh: batch_eh.__dict__ = batch_eh_copy.__dict__.copy()
@@ -1273,7 +1270,7 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
             ):
                 reduced = self.optimized_perturbation()
                 if not reduced:
-                    self.shake(1)
+                    # self.shake(1)
                     tries += 1
         return imp
 
@@ -1297,16 +1294,12 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
             weight_dict = self.get_weight_per_batch(ps_to_destroy_from)
         else:
             weight_dict = self.get_weight_per_batch()
-        probabilities = []
-        keys = []
-        for key, weight in weight_dict.items():
-            probabilities.append(1 - weight / self.batch_weight)
-            keys.append(key)
-        probabilities = [float(i) / sum(probabilities) for i in probabilities]
+        transformations = {key: max(weight_dict.values())-weight for key, weight in weight_dict.items()}
+        probabilities = {key: trans/sum(transformations.values()) for key, trans in transformations.items()}
         if with_prob:
-            destroy_batch = np.random.choice(keys, p=probabilities)
+            destroy_batch = np.random.choice(list(probabilities.keys()), p=list(probabilities.values()))
         else:
-            destroy_batch = np.random.choice(keys)
+            destroy_batch = np.random.choice(list(weight_dict.keys()))
         return destroy_batch
 
     def optimized_perturbation(self):
@@ -1325,7 +1318,7 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
                 / 18
         ) < len(self.batches):
             change = True
-            destroy_batch = self.choose_batch_for_destruction(with_prob=True)
+            destroy_batch = self.choose_batch_for_destruction(with_prob=False)
             orders_to_reassign = self.batches[destroy_batch].orders
             self.replenish_shelves(self.batches[destroy_batch])
             self.batches.pop(destroy_batch)
@@ -1375,7 +1368,7 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
         return bool(improvement * change)
 
     def repair(self):
-        self.tests()
+        # self.tests()
         improvement = True
         while (
                 not all(
@@ -1417,7 +1410,7 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
                 [b1.add_order(order) for order in batch1_orders]
                 self.batches.update({b1.ID: b1})
                 b2_id = str(self.get_new_batch_id())
-                b2 = BatchNew(b2_id, inf_batch.pack_station)
+                b2 = BatchNew(b2_id, other_batch.pack_station)
                 [b2.add_order(order) for order in batch2_orders]
                 self.batches.update({b2.ID: b2})
                 if all(
@@ -1433,7 +1426,7 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
                 else:
                     self.batches = copy.deepcopy(curr_sol)
                     self.item_id_pod_id_dict = copy.deepcopy(item_id_pod_id_dict_copy)
-        self.tests()
+        # self.tests()
         return improvement
 
     def reduced_vns(self, max_iters, t_max, k_max):
@@ -1454,17 +1447,15 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
         while iters < max_iters and t < t_max:
             print("Start iteration {} of VNS".format(str(iters)))
             k = 1
-            while k <= k_max:
-                # if np.random.random() < .5:
+            while k < k_max:
                 self.shake(k)
-
                 improvement = True
                 while improvement:
                     fit_before_ls = self.get_fitness_of_solution()
 
                     self.reduce_number_of_batches(max_tries=3)
 
-                    self.randomized_local_search(max_iters=55, k=k)
+                    self.randomized_local_search(max_iters=20, k=k)
                     # self.swap_ps(np.random.choice(list(self.batches.values())))
                     # curr_sol2 = copy.deepcopy(self.batches)
                     # curr_fit2 = self.get_fitness_of_solution()
@@ -1519,7 +1510,7 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
 
 if __name__ == "__main__":
     SKUS = ["24"]  # options: 24 and 360
-    SUBSCRIPTS = [""]  # , "_a", "_b"
+    SUBSCRIPTS = ["_b"]  # , "_a", "_b"
     NUM_ORDERSS = [10]  # [10,
     MEANS = ["5"]  # "1x6",, "5"
     instance_sols = {}
@@ -1542,9 +1533,7 @@ if __name__ == "__main__":
                     )
 
                     storagePolicies = {}
-                    storagePolicies[
-                        "dedicated"
-                    ] = "data/sku{}/pods_items_dedicated_1.txt".format(SKU)
+                    # storagePolicies["dedicated"] = "data/sku{}/pods_items_dedicated_1.txt".format(SKU)
                     storagePolicies['mixed'] = 'data/sku{}/pods_items_mixed_shevels_1-5.txt'.format(SKU)
                     # storagePolicies['mixed'] = 'data/sku{}/pods_items_mixed_shevels_1-10.txt'.format(SKU)
 
@@ -1557,7 +1546,7 @@ if __name__ == "__main__":
                     input_files = [storagePolicies, instances, orders, layoutFile, podInfoFile]
 
                     sols_and_runtimes = {}
-                    runtimes = [450]
+                    runtimes = [120]
                     for runtime in runtimes:
                         np.random.seed(1999851)
                         if runtime == 0:
@@ -1573,7 +1562,7 @@ if __name__ == "__main__":
                                     SKU, NUM_ORDERS, SUBSCRIPT, MEAN, STORAGE_STRATEGY
                                 )
                             )
-                            ils.reduced_vns(max_iters=1500, t_max=runtime, k_max=5)
+                            ils.reduced_vns(max_iters=100, t_max=runtime, k_max=4)
                             # ils.perform_ils(num_iters=1500, t_max=runtime)
                             # vns = VariableNeighborhoodSearch()
                             # vns.reduced_vns(1500, runtime, 2)
