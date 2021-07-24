@@ -13,7 +13,7 @@ from utils import *
 import copy
 import random
 import heapq
-
+from operator import attrgetter
 try:
     from Queue import LifoQueue
 except ImportError:
@@ -79,20 +79,7 @@ class GreedyMixedShelves(Demo):
             for ps1, ps2 in list(itertools.combinations(self.warehouseInstance.OutputStations.keys(), 2))
         ])
         assert set(self.warehouseInstance.Orders.keys()).symmetric_difference(set([x for batch in self.batches.values() for x in batch.orders])) == set()
-
-    def new_test(self):
-        shelves_taken = self.item_id_pod_id_dict
-        shelves_orig = self.item_id_pod_id_dict_orig
-        total_taken = []
-        for key1, shelf in shelves_orig.items():
-            for key2, item_count in shelf.items():
-                new = shelves_taken[key1][key2]
-                orig = item_count
-                taken = orig - new
-                total_taken.append(taken)
-        assert sum(total_taken) == 50
-
-    def lol(self):
+        # test whether the stock is correct
         item_id_pod_id_dict_orig_copy = copy.deepcopy(self.item_id_pod_id_dict_orig)
         for batch in self.batches.values():
             for item in batch.items.values():
@@ -105,6 +92,8 @@ class GreedyMixedShelves(Demo):
                     if shelf != item_id_pod_id_dict_orig_copy[ik][sk]:
                         print(ik, sk)
             raise e
+
+        assert all([stock >= 0 for item in self.item_id_pod_id_dict.values() for stock in item.values()])
 
     def get_station_with_min_total_distance(self, order_idx):
         """
@@ -770,7 +759,6 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
         print("fitness after perturbation: ", self.get_fitness_of_solution())
 
     def exchange_orders(self, k, processed):
-        self.new_test()
         card = k
 
         all_orders = {
@@ -783,14 +771,23 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
         combs_feas = []
         for comb in combs:
             order_i, order_j = itemgetter(*comb)(all_orders)
+            # exclude combinations that come from same batch -> exchanging orders within a batch makes no sense
+            if order_i.batch_id == order_j.batch_id:
+                continue
+            # check weight constraints
             weight_diff = order_i.weight - order_j.weight
             if (
                     weight_diff <= 0 and abs(weight_diff) <= self.batch_weight - self.batches[order_i.batch_id].weight
             ) or (weight_diff > 0 and weight_diff <= self.batch_weight - self.batches[order_j.batch_id].weight):
                 combs_feas.append(comb)
-        coc = 0
-        while coc < card:
-            self.new_test()
+
+        count = 0
+        while count < card:
+            # refresh so the order objects are bound to the one assigned to the batches (weird behavior in python)
+            all_orders = {
+                order.ID: order for batch in self.batches.values() for order in list(batch.orders.values())
+            }
+
             combs = list(set(combs).difference(processed))
             if len(combs) == 0:
                 return processed
@@ -818,24 +815,24 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
             orders = combs.pop(np.random.choice(range(len(combs)), p=probs))
             order_i, order_j = itemgetter(*orders)(all_orders)
 
+            # somehow have to do that, otherwise objects diverge leading to complex problems
             order_i = self.batches[order_i.batch_id].orders[order_i.ID]
             order_j = self.batches[order_j.batch_id].orders[order_j.ID]
 
+            # through exchange in previous iterations, this case could occur
             if order_i.batch_id == order_j.batch_id:
                 continue
-
+            # do not make the same operation twice
             processed.append(orders)
-
+            # get batches of orders
             batch_i = self.batches[order_i.batch_id]
             batch_j = self.batches[order_j.batch_id]
-
+            # has been checked, but through previous iterations could have changed
             weight_diff = order_i.weight - order_j.weight
             if (
                     weight_diff <= 0 and abs(weight_diff) <= self.batch_weight - batch_i.weight
             ) or (weight_diff > 0 and weight_diff <= self.batch_weight - batch_j.weight):
-                coc += 1
-                self.new_test()
-                self.lol()
+                count += 1
 
                 batch_i.del_order(order_i, self.item_id_pod_id_dict)
                 batch_j.add_order(order_i)
@@ -844,8 +841,6 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
                 batch_j.del_order(order_j, self.item_id_pod_id_dict)
                 batch_i.add_order(order_j)
                 self.greedy_cobot_tour(batch_i, items=order_j.items)
-
-                self.new_test()
 
                 if len(batch_i.items) == 0:
                     self.batches.pop(batch_i.ID)
@@ -860,7 +855,6 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
                     self.swap_ps_of_batch()
                 if batch_i: self.local_search_shelves(batch_i)
                 if batch_j: self.local_search_shelves(batch_j)
-                self.lol()
         return processed
 
     def determine_switchable_orders_randomized(
@@ -948,7 +942,6 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
                 batch_j.del_order(order_j, self.item_id_pod_id_dict)
                 batch_i.add_order(order_j)
                 self.greedy_cobot_tour(batch_i, items=order_j.items)
-            self.lol()
             if len(batch_i.items) == 0:
                 self.batches.pop(batch_i.ID)
                 batch_i = None
@@ -960,7 +953,6 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
                 for ps1, ps2 in list(itertools.combinations(self.warehouseInstance.OutputStations.keys(), 2))
             ]):
                 self.swap_ps_of_batch()
-            self.lol()
             if batch_i: self.local_search_shelves(batch_i)
             if batch_j: self.local_search_shelves(batch_j)
         return processed
@@ -1043,7 +1035,6 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
 
             if order.weight < self.batch_weight - batch_to_add_to.weight:
                 count += 1
-                self.lol()
                 batch_to_remove_from.del_order(order, self.item_id_pod_id_dict)
                 batch_to_remove_from.route = [
                     x
@@ -1053,7 +1044,6 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
 
                 batch_to_add_to.add_order(order)
                 self.greedy_cobot_tour(batch_to_add_to, items=order.items)
-                self.lol()
                 while any([
                     abs(len(self.get_batches_for_station(ps1)) - len(self.get_batches_for_station(ps2))) >= 2
                     for ps1, ps2 in list(itertools.combinations(self.warehouseInstance.OutputStations.keys(), 2))
@@ -1084,11 +1074,8 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
         T = 0.02 * curr_fit
         while iters < max_iters:
             operator_idx = np.random.choice(np.arange(0, len(operators)), p=np.array(weights)/sum(weights))
-            self.lol()
             operator = operators[operator_idx]
-            
             processed = operator(k, processed)
-            self.lol()
             new_fit = self.get_fitness_of_solution()
             if self.get_fitness_of_solution() < curr_fit:
                 curr_sol = copy.deepcopy(self.batches)
@@ -1110,7 +1097,6 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
             else:
                 self.batches = copy.deepcopy(curr_sol)
                 self.item_id_pod_id_dict = copy.deepcopy(item_id_pod_id_dict_copy)
-                self.lol()
                 weights[operator_idx] = lamb * weights[operator_idx] + (1-lamb) * 1
             iters += 1
             T *= alpha
@@ -1123,11 +1109,8 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
         for batch in self.batches.values():
             for item in batch.items.values():
                 self.item_id_pod_id_dict[item.orig_ID][item.shelf] -= 1
-        self.lol()
 
     def repair_negative_stock(self):
-        print("repair infeasible solution")
-        from operator import attrgetter
         class FindSlack:
             def __init__(self, slack, new_batch, item, shelf, item_id_pod_it_dict):
                 self.slack = slack
@@ -1167,8 +1150,6 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
 
 
     def local_search_shelves(self, batch: BatchNew, blacklist_item=None, blacklist_shelf=None):
-        #self.tests()
-        #self.new_test()
         curr_batch = copy.deepcopy(batch)
         item_id_pod_it_dict_copy = copy.deepcopy(self.item_id_pod_id_dict)
         if not self.is_storage_dedicated:
@@ -1281,19 +1262,16 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
                     self.item_id_pod_id_dict[item.orig_ID][top_shelf] -= 1
                     assigned.append(item)
                 batch.route.append(top_shelf)
-        self.new_test()
         # batch_eh, batch_eh_copy = self.swap_ps(batch)
         batch_eh, batch_eh_copy = None, None
         if not blacklist_item:  # dont call the function within recursion
-            pass
-            #self.repair_negative_stock()
+            self.repair_negative_stock()
         # self.swap_ps(batch)
-        # self.simulatedAnnealing(batch=batch)
+        self.simulatedAnnealing(batch=batch)
         if not self.get_fitness_of_batch(batch) < self.get_fitness_of_batch(curr_batch) and not blacklist_item: # dont revert solution in case we check blacklist impact
             batch.__dict__ = curr_batch.__dict__.copy()
             if batch_eh: batch_eh.__dict__ = batch_eh_copy.__dict__.copy()
             self.item_id_pod_id_dict = item_id_pod_it_dict_copy
-            self.tests()
 
     def swap_ps(self, batch_i):
         curr_fit = self.get_fitness_of_solution()
@@ -1306,25 +1284,9 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
             batch_j_copy = copy.deepcopy(batch_j)
             batch_i.pack_station = batch_j.pack_station
             batch_j.pack_station = batch_i.pack_station
-            # batch_i.pack_station = str(
-            #     np.random.choice(
-            #         np.setdiff1d(
-            #             list(self.warehouseInstance.OutputStations.keys()),
-            #             [batch_i.pack_station],
-            #         )
-            #     )
-            # )
-            # batch_j.pack_station = str(
-            #     np.random.choice(
-            #         np.setdiff1d(
-            #             list(self.warehouseInstance.OutputStations.keys()),
-            #             [batch_j.pack_station],
-            #         )
-            #     )
-            # )
             self.simulatedAnnealing(batch=batch_i)
             self.simulatedAnnealing(batch=batch_j)
-            self.tests()
+            # self.tests()
             if self.get_fitness_of_solution() < curr_fit:
                 return batch_j, batch_j_copy
             else:
@@ -1459,14 +1421,13 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
                         # self.simulatedAnnealing(batch=batch)
                 curr_sol = copy.deepcopy(self.batches)
                 item_id_pod_id_dict_copy = copy.deepcopy(self.item_id_pod_id_dict)
-                self.tests()
+                # self.tests()
             else:
                 self.batches = copy.deepcopy(curr_sol)
                 self.item_id_pod_id_dict = copy.deepcopy(item_id_pod_id_dict_copy)
         return bool(improvement * change), destroy_batch
 
     def repair(self):
-        # self.tests()
         improvement = True
         while (
                 not all(
@@ -1522,7 +1483,6 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
                 else:
                     self.batches = copy.deepcopy(curr_sol)
                     self.item_id_pod_id_dict = copy.deepcopy(item_id_pod_id_dict_copy)
-        # self.tests()
         return improvement
 
     def reduced_vns(self, max_iters, t_max, k_max):
@@ -1531,7 +1491,6 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
         :param t_max: maximum cpu time
         :param k_max: maximum number of different neighborhoods / shake operations to be performed
         """
-        self.lol()
         iters = 0
         starttime = time.time()
         t = time.time() - starttime
@@ -1547,26 +1506,11 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
             k = 1
             while k < k_max:
                 self.shake(k)
-                self.lol()
-                self.new_test()
                 improvement = True
                 while improvement:
                     fit_before_ls = self.get_fitness_of_solution()
-                    self.lol()
                     self.reduce_number_of_batches(max_tries=3)
-                    self.new_test()
-                    self.lol()
                     self.randomized_local_search(max_iters=20, k=k)
-                    self.new_test()
-                    self.lol()
-                    # self.swap_ps(np.random.choice(list(self.batches.values())))
-                    # curr_sol2 = copy.deepcopy(self.batches)
-                    # curr_fit2 = self.get_fitness_of_solution()
-                    # self.swap_order()
-                    # if self.get_fitness_of_solution() >= curr_fit2:
-                    #     print("revert sol")
-                    #     self.batches = curr_sol2
-
                     neighbor_fit = self.get_fitness_of_solution()
                     print("curr fit: {}; cand fit {}".format(curr_fit, neighbor_fit))
                     if neighbor_fit < fit_before_ls:
@@ -1576,6 +1520,8 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
                     if (
                         neighbor_fit < curr_fit
                     ):
+                        self.tests()
+
                         curr_fit = neighbor_fit  # accept new solution
 
                         curr_sol = copy.deepcopy(self.batches)
@@ -1615,7 +1561,7 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
 
 if __name__ == "__main__":
     SKUS = ["24"]  # options: 24 and 360
-    SUBSCRIPTS = ["_b"]  # , "_a", "_b"
+    SUBSCRIPTS = [""]  # , "_a", "_b"
     NUM_ORDERSS = [10]  # [10,
     MEANS = ["5"]  # "1x6",, "5"
     instance_sols = {}
