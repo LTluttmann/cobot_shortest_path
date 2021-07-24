@@ -99,11 +99,12 @@ class GreedyMixedShelves(Demo):
                 item_id_pod_id_dict_orig_copy[item.orig_ID][item.shelf] -= 1
         try:
             assert item_id_pod_id_dict_orig_copy == self.item_id_pod_id_dict
-        except AssertionError:
+        except AssertionError as e:
             for ik, item in self.item_id_pod_id_dict.items():
                 for sk, shelf in item.items():
                     if shelf != item_id_pod_id_dict_orig_copy[ik][sk]:
                         print(ik, sk)
+            raise e
 
     def get_station_with_min_total_distance(self, order_idx):
         """
@@ -816,6 +817,10 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
 
             orders = combs.pop(np.random.choice(range(len(combs)), p=probs))
             order_i, order_j = itemgetter(*orders)(all_orders)
+
+            order_i = self.batches[order_i.batch_id].orders[order_i.ID]
+            order_j = self.batches[order_j.batch_id].orders[order_j.ID]
+
             if order_i.batch_id == order_j.batch_id:
                 continue
 
@@ -1008,27 +1013,18 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
         }
         count = 0
 
-        orders
+        if all(np.array(list(frac_nodes_to_remove.values()))==0):
+            probs = np.array([1/len(frac_nodes_to_remove)]*len(frac_nodes_to_remove))
+        else:
+            probs = np.array(list(frac_nodes_to_remove.values()))/sum(frac_nodes_to_remove.values())
 
-
-        while count < k:
-            if len(frac_nodes_to_remove)==0:
-                return processed
-
-            if all(np.array(list(frac_nodes_to_remove.values()))==0):
-                probs = np.array([1/len(frac_nodes_to_remove)]*len(frac_nodes_to_remove))
-            else:
-                probs = np.array(list(frac_nodes_to_remove.values()))/sum(frac_nodes_to_remove.values())
-
-            # completely random sampling
-            # probs = np.array([1/len(all_orders)]*len(all_orders))
-
-            order = np.random.choice(list(frac_nodes_to_remove.keys()), p=probs)
-            frac_nodes_to_remove.pop(order)
-            # orders = np.random.permutation(list(all_orders.values())[:])
-
+        orders = np.random.choice(list(frac_nodes_to_remove.keys()), p=probs, size=min(k, len(probs)), replace=False)
+        assert all([order is self.batches[order.batch_id].orders[order.ID] for order in all_orders])
+        for order in orders:
+            # no clue why, but this has to be done, otherwise order becomes new object which causes all kinds of problems
+            order = self.batches[order.batch_id].orders[order.ID]
             batch_to_remove_from = self.batches[order.batch_id]
-            assert order is self.batches[order.batch_id].orders[order.ID]
+
             interactions = {
                 batch: sum([
                     any(set(item.shelves) & set(batch.route))
@@ -1042,7 +1038,7 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
                 probs = [1/len(interactions)] * len(interactions)
             else:
                 probs = np.array(list(interactions.values()))/sum(interactions.values())
-            assert order is self.batches[order.batch_id].orders[order.ID]
+
             batch_to_add_to = np.random.choice(list(interactions.keys()), p=probs)
 
             if order.weight < self.batch_weight - batch_to_add_to.weight:
@@ -1083,13 +1079,14 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
         item_id_pod_id_dict_copy = copy.deepcopy(self.item_id_pod_id_dict)
         processed = []
         operators = [self.swap_order, self.exchange_orders, self.determine_switchable_orders_randomized]
-        operators = [self.swap_order]
+        # operators = [self.swap_order]
         weights = [1] * len(operators)
         T = 0.02 * curr_fit
         while iters < max_iters:
             operator_idx = np.random.choice(np.arange(0, len(operators)), p=np.array(weights)/sum(weights))
             self.lol()
             operator = operators[operator_idx]
+            
             processed = operator(k, processed)
             self.lol()
             new_fit = self.get_fitness_of_solution()
