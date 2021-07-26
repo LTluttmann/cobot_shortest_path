@@ -166,7 +166,7 @@ class Demo:
                 ids = item.ID
                 color, product = ids.split("/")
                 item_id = trie[product][color]
-                self.item_id_pod_id_dict[item_id][key] = 9999 #int(item.Count)
+                self.item_id_pod_id_dict[item_id][key] = int(item.Count)
 
     def fill_station_id_bot_id_dict(self):
         """

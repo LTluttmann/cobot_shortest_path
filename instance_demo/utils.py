@@ -115,13 +115,17 @@ class BatchNew:
         self.orders[order.ID] = order
         for item in order.items.values():
             self.items[item.ID] = item
+            assert self.items[item.ID] is item
         self.weight += order.weight
         order.batch_id = self.ID
 
-    def del_order(self, order: OrderOfBatch):
+    def del_order(self, order: OrderOfBatch, item_id_pod_id_dict):
         self.orders.pop(order.ID)
         for item in order.items.values():
+
+            item_id_pod_id_dict[item.orig_ID][item.shelf] += 1
             self.items.pop(item.ID)
+
         self.weight -= order.weight
         self.route = [
             x for x in self.route if not x in set(self.route).difference(list(self.items_of_shelves.keys()))
@@ -156,7 +160,8 @@ class BatchNew:
 
     def route_insert(self, position, val, item):
         self.route = self.route[:position] + [val] + self.route[position:]
-        self.items[item.ID].shelf = val
+        # item.shelf = val
+        assert item is self.items[item.ID]
 
     @property
     def edges(self):
