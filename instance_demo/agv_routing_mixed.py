@@ -962,17 +962,20 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
             ps: len(self.get_batches_for_station(ps)) for ps in self.warehouseInstance.OutputStations.keys()
         }
         ps = max(batches_per_ps, key=batches_per_ps.get)
-        savings_per_batch = {
-            key: sum(
-                [max(self.get_station_with_min_total_distance(order.ID).values())
-                 for order in batch.orders.values()]
-            )
-            for key, batch in self.batches.items()
-            if batch.pack_station == ps
-        }
+        # savings_per_batch = {
+        #     key: sum(
+        #         [max(self.get_station_with_min_total_distance(order.ID).values())
+        #          for order in batch.orders.values()]
+        #     )
+        #     for key, batch in self.batches.items()
+        #     if batch.pack_station == ps
+        # }
         # batch = min(savings_per_batch, key=savings_per_batch.get)
+        # does this makes sense?
+        # transformed = max(list(savings_per_batch.values()))-np.array(list(savings_per_batch.values()))
+        # probs = transformed / sum(transformed)
         batch = np.random.choice(
-            list(savings_per_batch.keys()), p=np.array(list(savings_per_batch.values()))/sum(savings_per_batch.values())
+            [batch.ID for batch in self.batches.values() if batch.pack_station == ps]
         )
         self.batches[batch].pack_station = str(
             np.random.choice(
@@ -1010,7 +1013,7 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
         else:
             probs = np.array(list(frac_nodes_to_remove.values()))/sum(frac_nodes_to_remove.values())
 
-        orders = np.random.choice(list(frac_nodes_to_remove.keys()), p=probs, size=min(k, len(probs)), replace=False)
+        orders = np.random.choice(list(frac_nodes_to_remove.keys()), p=probs, size=min(k, len([x for x in probs if x > 0])), replace=False)
         assert all([order is self.batches[order.batch_id].orders[order.ID] for order in all_orders])
         for order in orders:
             # no clue why, but this has to be done, otherwise order becomes new object which causes all kinds of problems
@@ -1036,6 +1039,8 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
             if order.weight < self.batch_weight - batch_to_add_to.weight:
                 count += 1
                 batch_to_remove_from.del_order(order, self.item_id_pod_id_dict)
+                if len(batch_to_remove_from.items) == 0:
+                    self.batches.pop(batch_to_remove_from.ID)
                 batch_to_remove_from.route = [
                     x
                     for x in batch_to_remove_from.route
@@ -1069,7 +1074,6 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
         item_id_pod_id_dict_copy = copy.deepcopy(self.item_id_pod_id_dict)
         processed = []
         operators = [self.swap_order, self.exchange_orders, self.determine_switchable_orders_randomized]
-        # operators = [self.swap_order]
         weights = [1] * len(operators)
         T = 0.02 * curr_fit
         while iters < max_iters:
@@ -1350,10 +1354,9 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
             weight_dict = self.get_weight_per_batch(ps_to_destroy_from)
         else:
             weight_dict = self.get_weight_per_batch()
-        # [weight_dict.pop(x) for x in already_destroyed]
-        transformations = {key: max(weight_dict.values())-weight for key, weight in weight_dict.items()}
-        probabilities = {key: trans/sum(transformations.values()) for key, trans in transformations.items()}
-        if with_prob:
+        if with_prob and len(weight_dict.values()) > 1:
+            transformations = {key: max(weight_dict.values())-weight for key, weight in weight_dict.items()}
+            probabilities = {key: trans/sum(transformations.values()) for key, trans in transformations.items()}
             destroy_batch = np.random.choice(list(probabilities.keys()), p=list(probabilities.values()))
         else:
             destroy_batch = np.random.choice(list(weight_dict.keys()))
@@ -1561,9 +1564,9 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
 
 if __name__ == "__main__":
     SKUS = ["24"]  # options: 24 and 360
-    SUBSCRIPTS = [""]  # , "_a", "_b"
+    SUBSCRIPTS = ["", "_a", "_b"]  # , "_a", "_b"
     NUM_ORDERSS = [10]  # [10,
-    MEANS = ["5"]  # "1x6",, "5"
+    MEANS = ["1x6" ,"5"]  # "1x6",, "5"
     instance_sols = {}
     model_sols = {}
     NUM_DEPOTS = 2
@@ -1597,7 +1600,7 @@ if __name__ == "__main__":
                     input_files = [storagePolicies, instances, orders, layoutFile, podInfoFile]
 
                     sols_and_runtimes = {}
-                    runtimes = [120]
+                    runtimes = [90]
                     for runtime in runtimes:
                         np.random.seed(1999851)
                         if runtime == 0:
