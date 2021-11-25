@@ -756,7 +756,18 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
                 )
             # update weight_dict
             weight_dict = self.get_weight_per_batch()
+            self.align_station_utilization()
         print("fitness after perturbation: ", self.get_fitness_of_solution())
+
+    def align_station_utilization(self):
+        """function to change the pack station assigned to batches as long as the
+        utilization at the pack stations is aligned
+        """
+        while any([
+            abs(len(self.get_batches_for_station(ps1)) - len(self.get_batches_for_station(ps2))) >= 2
+            for ps1, ps2 in list(itertools.combinations(self.warehouseInstance.OutputStations.keys(), 2))
+        ]):
+            self.swap_ps_of_batch()
 
     def exchange_orders(self, k, processed):
         card = k
@@ -848,24 +859,14 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
                 if len(batch_j.items) == 0:
                     self.batches.pop(batch_j.ID)
                     batch_j = None
-                while any([
-                    abs(len(self.get_batches_for_station(ps1)) - len(self.get_batches_for_station(ps2))) >= 2
-                    for ps1, ps2 in list(itertools.combinations(self.warehouseInstance.OutputStations.keys(), 2))
-                ]):
-                    self.swap_ps_of_batch()
+                self.align_station_utilization()
                 if batch_i: self.local_search_shelves(batch_i)
                 if batch_j: self.local_search_shelves(batch_j)
         return processed
 
-    def determine_switchable_orders_randomized(
-        self, k, processed
-    ):
-        """
-        given two batches (batch ids), this function determines one order of each batch which can be exchanged between
-        the batches (wrt to capacity restrictions).
-        :param batch_i:
-        :param batch_j:
-        :return:
+    def determine_switchable_orders_randomized(self, k, processed):
+        """given two batches (batch ids), this function determines one order of each batch which can be
+        exchanged between the batches (wrt to capacity restrictions).
         """
         batch_i, batch_j = np.random.choice(
             [batch for key, batch in self.batches.items()], 2, replace=False
@@ -948,11 +949,7 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
             if len(batch_j.items) == 0:
                 self.batches.pop(batch_j.ID)
                 batch_j = None
-            while any([
-                abs(len(self.get_batches_for_station(ps1)) - len(self.get_batches_for_station(ps2))) >= 2
-                for ps1, ps2 in list(itertools.combinations(self.warehouseInstance.OutputStations.keys(), 2))
-            ]):
-                self.swap_ps_of_batch()
+            self.align_station_utilization()
             if batch_i: self.local_search_shelves(batch_i)
             if batch_j: self.local_search_shelves(batch_j)
         return processed
@@ -1049,11 +1046,7 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
 
                 batch_to_add_to.add_order(order)
                 self.greedy_cobot_tour(batch_to_add_to, items=order.items)
-                while any([
-                    abs(len(self.get_batches_for_station(ps1)) - len(self.get_batches_for_station(ps2))) >= 2
-                    for ps1, ps2 in list(itertools.combinations(self.warehouseInstance.OutputStations.keys(), 2))
-                ]):
-                    self.swap_ps_of_batch()
+                self.align_station_utilization()
                 self.local_search_shelves(batch_to_add_to)
 
         return processed
@@ -1123,34 +1116,37 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
                 self.shelf = shelf
                 self.item_id_pod_id_dict_c = item_id_pod_it_dict
 
-        blacklist = []
-        for ik, item in self.item_id_pod_id_dict.items():
-            for sk, shelf in item.items():
-                if shelf < 0:
-                    blacklist.append((ik, sk))
-        for item_key, shelf_key in blacklist:
-            slacks = []
-            for bid, batch in self.batches.items():
-                if item_key in [item.orig_ID for item in batch.items_of_shelves.get(shelf_key, [])]:
-                    prev_fitness = self.get_fitness_of_batch(batch)
+        while True:
+            blacklist = []
+            for ik, item in self.item_id_pod_id_dict.items():
+                for sk, shelf in item.items():
+                    if shelf < 0:
+                        blacklist.append((ik, sk))
+            if len(blacklist) == 0:
+                return
+            for item_key, shelf_key in blacklist:
+                slacks = []
+                for bid, batch in self.batches.items():
+                    if item_key in [item.orig_ID for item in batch.items_of_shelves.get(shelf_key, [])]:
+                        prev_fitness = self.get_fitness_of_batch(batch)
 
-                    curr_batch = copy.deepcopy(batch)
-                    item_id_pod_it_dict_copy = copy.deepcopy(self.item_id_pod_id_dict)
+                        curr_batch = copy.deepcopy(batch)
+                        item_id_pod_it_dict_copy = copy.deepcopy(self.item_id_pod_id_dict)
 
-                    self.local_search_shelves(batch, item_key, shelf_key)
-                    slacks.append(FindSlack(
-                        self.get_fitness_of_batch(batch)-prev_fitness,
-                        copy.deepcopy(batch),
-                        item_key,
-                        shelf_key,
-                        copy.deepcopy(self.item_id_pod_id_dict)
-                    ))
+                        self.local_search_shelves(batch, item_key, shelf_key)
+                        slacks.append(FindSlack(
+                            self.get_fitness_of_batch(batch)-prev_fitness,
+                            copy.deepcopy(batch),
+                            item_key,
+                            shelf_key,
+                            copy.deepcopy(self.item_id_pod_id_dict)
+                        ))
 
-                    batch.__dict__ = curr_batch.__dict__.copy()
-                    self.item_id_pod_id_dict = item_id_pod_it_dict_copy
-            min_slack = min(slacks, key=attrgetter("slack"))
-            self.batches[min_slack.new_batch.ID].__dict__ = min_slack.new_batch.__dict__.copy()
-            self.item_id_pod_id_dict = min_slack.item_id_pod_id_dict_c
+                        batch.__dict__ = curr_batch.__dict__.copy()
+                        self.item_id_pod_id_dict = item_id_pod_it_dict_copy
+                min_slack = min(slacks, key=attrgetter("slack"))
+                self.batches[min_slack.new_batch.ID].__dict__ = min_slack.new_batch.__dict__.copy()
+                self.item_id_pod_id_dict = min_slack.item_id_pod_id_dict_c
 
 
     def local_search_shelves(self, batch: BatchNew, blacklist_item=None, blacklist_shelf=None):
@@ -1563,10 +1559,10 @@ class VariableNeighborhoodSearch(SimulatedAnnealingMixed):
 
 
 if __name__ == "__main__":
-    SKUS = ["24"]  # options: 24 and 360
+    SKUS = ["24", "360"]  # options: 24 and 360
     SUBSCRIPTS = ["", "_a", "_b"]  # , "_a", "_b"
-    NUM_ORDERSS = [10]  # [10,
-    MEANS = ["1x6" ,"5"]  # "1x6",, "5"
+    NUM_ORDERSS = [20]  # [10,
+    MEANS = ["1x6", "5"]  # "1x6",, "5"
     instance_sols = {}
     model_sols = {}
     NUM_DEPOTS = 2
@@ -1587,8 +1583,8 @@ if __name__ == "__main__":
                     )
 
                     storagePolicies = {}
-                    # storagePolicies["dedicated"] = "data/sku{}/pods_items_dedicated_1.txt".format(SKU)
-                    storagePolicies['mixed'] = 'data/sku{}/pods_items_mixed_shevels_1-5.txt'.format(SKU)
+                    storagePolicies["dedicated"] = "data/sku{}/pods_items_dedicated_1.txt".format(SKU)
+                    # storagePolicies['mixed'] = 'data/sku{}/pods_items_mixed_shevels_1-5.txt'.format(SKU)
                     # storagePolicies['mixed'] = 'data/sku{}/pods_items_mixed_shevels_1-10.txt'.format(SKU)
 
                     orders = {}
@@ -1600,7 +1596,7 @@ if __name__ == "__main__":
                     input_files = [storagePolicies, instances, orders, layoutFile, podInfoFile]
 
                     sols_and_runtimes = {}
-                    runtimes = [90]
+                    runtimes = [120]
                     for runtime in runtimes:
                         np.random.seed(1999851)
                         if runtime == 0:
