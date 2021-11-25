@@ -245,16 +245,6 @@ class Demo:
             weights.append(self.get_weight_by_item(item))
         return np.sum(weights)
 
-    def get_weight_per_batch(self):
-        """
-        calculates the total weight of all the items already assigned to the batches
-        :return: dictionary with batch ID as key and its respective weight as value
-        """
-        weight_dict = dict()
-        for batch_id, batch in self.batches.items():
-            weight_dict[batch_id] = batch.weight
-        return weight_dict
-
     def get_weight_per_batch(self, pack_station=None):
         """
         calculates the total weight of all the items already assigned to the batches
